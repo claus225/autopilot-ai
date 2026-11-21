@@ -198,3 +198,15 @@ def test_local_assistant_chat_requires_user_last_message():
         "messages": [{"role": "assistant", "content": "Salut"}]
     })
     assert response.status_code == 422
+
+
+def test_local_assistant_chat_returns_503_when_model_is_not_ready(monkeypatch):
+    monkeypatch.setattr("app.main.get_ollama_status", lambda: {
+        "connected": False, "model": "qwen3.5:0.8b",
+        "message": "Ollama indisponible",
+    })
+    response = client.post("/api/assistant/chat", json={
+        "messages": [{"role": "user", "content": "Bonjour"}]
+    })
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Ollama indisponible"
