@@ -122,7 +122,7 @@ export default function App() {
     setChatInput("");
     setChatBusy(true);
     try {
-      const response = await fetch(\`\${API}/api/assistant/chat\`, {
+      const response = await fetch(`${API}/api/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: nextMessages.slice(-10) }),
@@ -308,7 +308,7 @@ export default function App() {
         <p className="reminder-note">Les messages sont traités par le modèle installé sur cet ordinateur. Aucun accès aux fichiers, au navigateur ou aux comptes n'est accordé à l'assistant.</p>
         <div className="chat-transcript" aria-live="polite">
           {chatMessages.length === 0 ? <p className="empty">Installe et démarre le modèle local pour commencer une conversation.</p> : chatMessages.map((message, index) => (
-            <div className={\`chat-bubble \${message.role}\`} key={index}>
+            <div className={`chat-bubble ${message.role}`} key={index}>
               <strong>{message.role === "user" ? "Toi" : "AutoPilot AI"}</strong>
               <p>{message.content}</p>
             </div>
