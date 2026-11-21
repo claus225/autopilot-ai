@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 
 const API = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const SETTINGS_KEY = "autopilot-reminder-settings";
+const SENT_KEY = "autopilot-reminders-sent";
+
+function readSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    return { enabled: saved.enabled === true, time: /^([01]\\d|2[0-3]):[0-5]\\d$/.test(saved.time) ? saved.time : "08:00" };
+  } catch {
+    return { enabled: false, time: "08:00" };
+  }
+}
 
 export default function App() {
   const [title, setTitle] = useState("");
@@ -11,6 +22,8 @@ export default function App() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(true);
+  const [notificationSettings, setNotificationSettings] = useState(readSettings);
+  const [notificationStatus, setNotificationStatus] = useState("");
 
   async function loadTasks() {
     try {
@@ -27,9 +40,64 @@ export default function App() {
     }
   }
 
+  useEffect(() => { loadTasks(); }, []);
+
   useEffect(() => {
-    loadTasks();
-  }, []);
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(notificationSettings)); } catch { /* storage may be unavailable */ }
+  }, [notificationSettings]);
+
+  useEffect(() => {
+    if (!notificationSettings.enabled || !("Notification" in window) || Notification.permission !== "granted") return undefined;
+
+    const checkDueTasks = () => {
+      const now = new Date();
+      const today = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+      const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      if (currentTime < notificationSettings.time) return;
+
+      let sent = {};
+      try { sent = JSON.parse(localStorage.getItem(SENT_KEY) || "{}"); } catch { sent = {}; }
+      tasks.filter(task => task.status === "todo" && task.due_date === today).forEach(task => {
+        const key = `${today}:${task.id}`;
+        if (sent[key]) return;
+        new Notification("AutoPilot AI — échéance aujourd'hui", {
+          body: task.title,
+          tag: key,
+          icon: "/favicon.ico",
+        });
+        sent[key] = true;
+      });
+      try { localStorage.setItem(SENT_KEY, JSON.stringify(sent)); } catch { /* notification still shown */ }
+    };
+
+    checkDueTasks();
+    const intervalId = window.setInterval(checkDueTasks, 30_000);
+    return () => window.clearInterval(intervalId);
+  }, [notificationSettings, tasks]);
+
+  async function enableNotifications() {
+    if (!("Notification" in window)) {
+      setNotificationStatus("Ce navigateur ne prend pas en charge les notifications.");
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== "granted") {
+        setNotificationSettings(current => ({ ...current, enabled: false }));
+        setNotificationStatus("Autorisation refusée. Tu peux la modifier dans les paramètres du navigateur.");
+        return;
+      }
+      setNotificationSettings(current => ({ ...current, enabled: true }));
+      setNotificationStatus("Notifications activées sur cet appareil lorsque l'application reste ouverte.");
+    } catch {
+      setNotificationStatus("Impossible d'activer les notifications dans ce navigateur.");
+    }
+  }
+
+  function disableNotifications() {
+    setNotificationSettings(current => ({ ...current, enabled: false }));
+    setNotificationStatus("Notifications désactivées.");
+  }
 
   async function saveTask(event) {
     event.preventDefault();
@@ -77,13 +145,13 @@ export default function App() {
       <header className="topbar">
         <span className="mark">A</span>
         <span>AutoPilot AI</span>
-        <span className="status">Prototype v0.4</span>
+        <span className="status">Prototype v0.5</span>
       </header>
 
       <section className="hero">
         <p className="eyebrow">ASSISTANT HYBRIDE • SÉCURITÉ D'ABORD</p>
         <h1>Tu prépares.<br /><span>AutoPilot organise.</span></h1>
-        <p className="intro">Note tes tâches, ajoute une échéance et repère celles qui approchent. Aucun message ni action externe n’est déclenché automatiquement.</p>
+        <p className="intro">Note tes tâches, ajoute une échéance et reçois un rappel local lorsque l'application est ouverte. Aucun message ni action externe n’est déclenché automatiquement.</p>
       </section>
 
       <section className="panel">
@@ -120,7 +188,21 @@ export default function App() {
             ))}
           </ul>
         ) : <p className="empty">Aucune échéance à signaler sur cette période.</p>}
-        <p className="reminder-note">Cet aperçu ne déclenche pas encore de notification.</p>
+        <p className="reminder-note">L'aperçu ne déclenche aucune notification à lui seul.</p>
+      </section>
+
+      <section className="notification-panel">
+        <div className="section-heading"><h2>Notifications locales</h2><span>{notificationSettings.enabled ? "Activées" : "Désactivées"}</span></div>
+        <label htmlFor="reminder-time">Heure du rappel quotidien</label>
+        <input id="reminder-time" type="time" value={notificationSettings.time} onChange={event => setNotificationSettings(current => ({ ...current, time: event.target.value }))} />
+        <p className="reminder-note">À cette heure ou après, une notification est affichée pour chaque tâche non terminée dont l'échéance est aujourd'hui. Une seule notification par tâche et par jour.</p>
+        {notificationSettings.enabled ? (
+          <button className="secondary-button" type="button" onClick={disableNotifications}>Désactiver les notifications</button>
+        ) : (
+          <button type="button" onClick={enableNotifications}>Autoriser et activer les notifications</button>
+        )}
+        {notificationStatus && <p className="result" role="status">{notificationStatus}</p>}
+        <p className="reminder-note">Limite : les notifications fonctionnent uniquement si le site est ouvert et si le navigateur les autorise. Elles ne sont pas envoyées lorsque l'application est fermée.</p>
       </section>
 
       <section className="tasks">
