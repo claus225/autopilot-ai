@@ -36,3 +36,13 @@ footer { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; marg
 @media (max-width: 520px) { .hero { padding-top: 54px; } .panel { padding: 19px; } h1 { letter-spacing: -2px; } .section-heading { align-items: flex-start; flex-direction: column; } }
 
 .due-date { display: block; margin: 7px 0 3px; color: #b8c9e8 !important; }
+
+.reminder-panel { margin-top: 28px; padding: 20px; border: 1px solid #34415e; border-radius: 16px; background: #101a2d; }
+.reminder-counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 16px 0; }
+.reminder-counts div { display: grid; gap: 4px; padding: 13px; border-radius: 11px; background: #1a2740; }
+.reminder-counts strong { font-size: 24px; }
+.reminder-counts small, .reminder-list small { color: #aab8d0; font-size: 11px; }
+.reminder-list { display: grid; gap: 8px; margin: 12px 0; padding: 0; list-style: none; }
+.reminder-list li { display: grid; gap: 5px; padding: 12px; border: 1px solid #34415e; border-radius: 10px; }
+.reminder-list li span { overflow-wrap: anywhere; font-weight: 650; }
+.reminder-note { margin: 12px 0 0; color: #9eacc5; font-size: 11px; line-height: 1.5; }
