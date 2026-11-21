@@ -428,3 +428,8 @@ def change_task_status(task_id: int, update: TaskStatusUpdate):
     if item is None:
         raise HTTPException(status_code=404, detail="Tâche introuvable.")
     return {"item": item, "message": "Statut mis à jour. Aucune action externe n'a été exécutée."}
+
+
+# Private owner authentication endpoints (route-level checks).
+from .auth_routes import router as auth_router
+app.include_router(auth_router)
