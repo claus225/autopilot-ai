@@ -25,11 +25,14 @@ Consulte [GETTING_STARTED.md](GETTING_STARTED.md) pour installer Ollama, téléc
 - `frontend/` : mini-application React.
 - `backend/` : API FastAPI, stockage SQLite et tests.
 - `docs/architecture.md` : flux et étapes de conception.
+- `docs/RENDER_DEPLOYMENT.md` : prérequis de sécurité et de stockage avant Render.
 - `SECURITY.md` : règles de sécurité obligatoires.
 
 ## Sécurité
 
 Aucune action externe sans confirmation explicite. Pas de collecte de mots de passe, pas de contournement de protections de sites, pas de commandes système arbitraires. Ne publie jamais de clé API ni de fichier `.env`.
+
+**Le backend ne doit pas être exposé sur Internet à ce stade.** L'API n'a pas encore d'authentification par utilisateur et refuse donc volontairement les connexions distantes. Le déploiement Render est préparé sur le plan documentaire, mais n'est ni configuré ni publié. Voir [les prérequis Render](docs/RENDER_DEPLOYMENT.md).
 
 ## État du prototype
 
@@ -44,6 +47,9 @@ Aucune action externe sans confirmation explicite. Pas de collecte de mots de pa
 - [ ] Notifications réelles (push/e-mail) et planification en arrière-plan
 - [x] Connecteur de chat IA local (Ollama, modèle à installer sur le PC)
 - [x] Arrêt d’urgence persistant dans SQLite et journal de sécurité sans contenu de messages
+- [ ] Authentification sécurisée avant tout déploiement public
+- [ ] Base de données persistante adaptée à l'hébergement
+- [ ] Déploiement Render
 - [ ] Connexion Telegram complète : groupes/canaux autorisés, publications après confirmation, liens d’invitation et historique (seul le contrôle de connexion en lecture seule existe pour l’instant)
 - [ ] Automatisation web contrôlée
 - [ ] Agent local facultatif et isolé
