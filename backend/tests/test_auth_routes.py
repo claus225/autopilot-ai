@@ -94,3 +94,54 @@ def test_login_rejects_wrong_password_and_untrusted_origin(tmp_path, monkeypatch
         json={"password": "Une phrase secrète très longue 2026!"},
     )
     assert untrusted.status_code == 403
+
+
+def test_private_api_routes_require_owner_session_and_csrf(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "api-guard.db"))
+    monkeypatch.setenv("AUTOPILOT_SETUP_TOKEN", "setup-secret-" + "z" * 40)
+    monkeypatch.setenv("AUTH_COOKIE_SECURE", "false")
+
+    anonymous = TestClient(app)
+    assert anonymous.get("/api/tasks").status_code == 401
+    assert anonymous.post("/api/tasks", json={"title": "Sans session"}).status_code == 401
+
+    owner = TestClient(app)
+    setup = owner.post(
+        "/api/auth/setup",
+        headers={"Origin": ORIGIN},
+        json={
+            "setup_token": "setup-secret-" + "z" * 40,
+            "password": "Mot de passe propriétaire long 2026!",
+        },
+    )
+    assert setup.status_code == 200
+
+    # Read-only private routes require a session.
+    assert owner.get("/api/tasks").status_code == 200
+
+    # Mutations require both the trusted origin and the session-bound CSRF token.
+    denied = owner.post(
+        "/api/tasks",
+        headers={"Origin": ORIGIN},
+        json={"title": "Sans CSRF"},
+    )
+    assert denied.status_code == 403
+
+    me = owner.get("/api/auth/me")
+    csrf = me.json()["csrf_token"]
+    accepted = owner.post(
+        "/api/tasks",
+        headers={"Origin": ORIGIN, "X-CSRF-Token": csrf},
+        json={"title": "Avec protection"},
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["item"]["title"] == "Avec protection"
+
+    # Revoking the session blocks subsequent private reads.
+    owner.post(
+        "/api/auth/logout",
+        headers={"Origin": ORIGIN, "X-CSRF-Token": csrf},
+    )
+    assert owner.get("/api/tasks").status_code == 401
