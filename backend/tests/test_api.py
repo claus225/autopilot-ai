@@ -307,3 +307,22 @@ def test_unknown_permission_is_rejected():
         json={"enabled": False},
     )
     assert response.status_code == 404
+
+
+
+def test_api_adds_security_response_headers():
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["cache-control"] == "no-store"
+
+
+def test_api_rejects_oversized_announced_request_body():
+    response = client.post(
+        "/api/tasks",
+        content=b'{"title":"test"}',
+        headers={"Content-Type": "application/json", "Content-Length": "70000"},
+    )
+    assert response.status_code == 413
