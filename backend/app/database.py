@@ -1,6 +1,8 @@
+from contextlib import contextmanager
 from pathlib import Path
 import os
 import sqlite3
+from collections.abc import Iterator
 
 DEFAULT_DB = Path(__file__).resolve().parents[1] / "data" / "autopilot.db"
 
@@ -9,16 +11,21 @@ def database_path() -> Path:
     return Path(os.getenv("AUTOPILOT_DB_PATH", str(DEFAULT_DB)))
 
 
-def connect() -> sqlite3.Connection:
+@contextmanager
+def db_connection() -> Iterator[sqlite3.Connection]:
     path = database_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(path, timeout=5)
     connection.row_factory = sqlite3.Row
-    return connection
+    try:
+        with connection:
+            yield connection
+    finally:
+        connection.close()
 
 
 def initialize_database() -> None:
-    with connect() as connection:
+    with db_connection() as connection:
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS tasks (
@@ -35,7 +42,7 @@ def initialize_database() -> None:
 
 def create_task(title: str, description: str, created_at: str) -> dict:
     initialize_database()
-    with connect() as connection:
+    with db_connection() as connection:
         cursor = connection.execute(
             "INSERT INTO tasks (title, description, created_at) VALUES (?, ?, ?)",
             (title, description, created_at),
@@ -49,7 +56,7 @@ def create_task(title: str, description: str, created_at: str) -> dict:
 
 def list_tasks() -> list[dict]:
     initialize_database()
-    with connect() as connection:
+    with db_connection() as connection:
         rows = connection.execute(
             "SELECT id, title, description, status, created_at FROM tasks ORDER BY id DESC"
         ).fetchall()
@@ -58,7 +65,7 @@ def list_tasks() -> list[dict]:
 
 def update_task_status(task_id: int, status: str) -> dict | None:
     initialize_database()
-    with connect() as connection:
+    with db_connection() as connection:
         cursor = connection.execute(
             "UPDATE tasks SET status = ? WHERE id = ?",
             (status, task_id),
