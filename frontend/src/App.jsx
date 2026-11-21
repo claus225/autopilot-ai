@@ -250,6 +250,9 @@ export default function App() {
           <span className="status">Prototype v0.5</span>
         )}
       </header>
+      {!isInstalled && !installPrompt && (
+        <p className="install-hint">Après publication HTTPS : sur Android, ouvre le menu Chrome ⋮ puis « Installer l'application » ou « Ajouter à l'écran d'accueil ». Sur iPhone, utilise Partager puis « Sur l'écran d'accueil » si l'option est disponible.</p>
+      )}
 
       <section className="hero">
         <p className="eyebrow">ASSISTANT HYBRIDE • SÉCURITÉ D'ABORD</p>
@@ -336,7 +339,7 @@ export default function App() {
         >
           {securityBusy ? "Mise à jour…" : securityStatus?.emergency_stop_enabled ? "Désactiver l'arrêt d'urgence" : "Activer l'arrêt d'urgence"}
         </button>
-        <p className="reminder-note">L'arrêt d'urgence suspend le chat IA côté serveur et les notifications locales dans cette interface. Les notes et tâches déjà enregistrées restent intactes. Le réglage serveur est réinitialisé au redémarrage de l'API.</p>
+        <p className="reminder-note">L'arrêt d'urgence suspend le chat IA côté serveur et les notifications locales dans cette interface. Les notes et tâches déjà enregistrées restent intactes. Le réglage est enregistré dans SQLite et reste actif après un redémarrage de l'API.</p>
       </section>
 
 
