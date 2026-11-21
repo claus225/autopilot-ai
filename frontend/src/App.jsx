@@ -26,6 +26,9 @@ export default function App() {
   const [notificationStatus, setNotificationStatus] = useState("");
   const [nextAction, setNextAction] = useState(null);
   const [assistantStatus, setAssistantStatus] = useState(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
 
   async function loadTasks() {
     try {
@@ -103,6 +106,31 @@ export default function App() {
   function disableNotifications() {
     setNotificationSettings(current => ({ ...current, enabled: false }));
     setNotificationStatus("Notifications désactivées.");
+  }
+
+
+  async function sendChat(event) {
+    event.preventDefault();
+    const content = chatInput.trim();
+    if (!content || chatBusy) return;
+    const nextMessages = [...chatMessages, { role: "user", content }];
+    setChatMessages(nextMessages);
+    setChatInput("");
+    setChatBusy(true);
+    try {
+      const response = await fetch(\`\${API}/api/assistant/chat\`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: nextMessages.slice(-10) }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Assistant local indisponible.");
+      setChatMessages(current => [...current, { role: "assistant", content: data.reply }]);
+    } catch (error) {
+      setChatMessages(current => [...current, { role: "assistant", content: error.message || "Impossible de joindre l'assistant local." }]);
+    } finally {
+      setChatBusy(false);
+    }
   }
 
   async function saveTask(event) {
@@ -220,6 +248,26 @@ export default function App() {
       <section className="assistant-status-panel" aria-live="polite">
         <strong>{assistantStatus?.connected ? "Moteur IA connecté" : "Moteur IA non connecté"}</strong>
         <p>{assistantStatus?.message || "Vérification de la configuration IA…"}</p>
+      </section>
+
+
+      <section className="chat-panel">
+        <div className="section-heading"><h2>Assistant IA local</h2><span>{assistantStatus?.connected ? "Prêt" : "En attente"}</span></div>
+        <p className="reminder-note">Les messages sont traités par le modèle installé sur cet ordinateur. Aucun accès aux fichiers, au navigateur ou aux comptes n'est accordé à l'assistant.</p>
+        <div className="chat-transcript" aria-live="polite">
+          {chatMessages.length === 0 ? <p className="empty">Installe et démarre le modèle local pour commencer une conversation.</p> : chatMessages.map((message, index) => (
+            <div className={\`chat-bubble \${message.role}\`} key={index}>
+              <strong>{message.role === "user" ? "Toi" : "AutoPilot AI"}</strong>
+              <p>{message.content}</p>
+            </div>
+          ))}
+          {chatBusy && <p className="reminder-note">L'assistant prépare sa réponse…</p>}
+        </div>
+        <form onSubmit={sendChat} className="chat-form">
+          <label htmlFor="assistant-message">Ton message</label>
+          <textarea id="assistant-message" value={chatInput} onChange={event => setChatInput(event.target.value)} maxLength={2000} rows={3} placeholder="Ex. Aide-moi à organiser ma journée…" />
+          <button disabled={chatBusy || !chatInput.trim()}>{chatBusy ? "Réponse en cours…" : "Envoyer au modèle local"}</button>
+        </form>
       </section>
 
       <section className="assistant-panel" aria-live="polite">
