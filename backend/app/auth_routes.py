@@ -63,9 +63,12 @@ def _session(request: Request) -> dict | None:
 @router.get("/status")
 def auth_status():
     owner_exists = get_owner_account() is not None
+    setup_available = not owner_exists and len(os.getenv("AUTOPILOT_SETUP_TOKEN", "")) >= 32
+    production_lock = os.getenv("APP_ENV", "development").lower() == "production"
     return {
         "owner_configured": owner_exists,
-        "setup_available": not owner_exists and bool(os.getenv("AUTOPILOT_SETUP_TOKEN")),
+        "setup_available": setup_available,
+        "access_locked": not owner_exists and (production_lock or bool(os.getenv("AUTOPILOT_SETUP_TOKEN", "").strip())),
         "session_required": True,
     }
 
