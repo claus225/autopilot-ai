@@ -31,3 +31,8 @@ Ne publiez pas de secret ni de détail exploitable dans une issue publique. Cont
 ## Données
 
 Le prototype ne doit pas recevoir de données personnelles sensibles. Les données de test doivent être fictives.
+
+
+## Permissions à refus par défaut
+
+Le registre SQLite contient cinq catégories de capacités futures : automatisation du navigateur, contrôle du PC, publication sociale, envoi de messages externes et achats en ligne. Elles sont toutes initialisées à `false`. L'API `GET /api/security/permissions` permet de les consulter. Toute tentative de les activer via `PATCH /api/security/permissions/{permission_key}` est refusée tant que la capacité correspondante n'est pas implémentée. Les tentatives de déblocage sont journalisées sans contenu de message. Ce registre n'accorde donc aucun accès externe.
