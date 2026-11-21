@@ -228,3 +228,39 @@ def test_local_assistant_chat_returns_503_when_model_is_not_ready(monkeypatch):
     })
     assert response.status_code == 503
     assert response.json()["detail"] == "Ollama indisponible"
+
+
+
+def test_security_status_defaults_to_protected_mode():
+    from app import main
+
+    main._emergency_stop_enabled = False
+    response = client.get("/api/security/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["emergency_stop_enabled"] is False
+    assert body["external_actions_enabled"] is False
+    assert body["browser_automation_enabled"] is False
+    assert body["local_agent_enabled"] is False
+    assert body["chat_available"] is True
+
+
+def test_emergency_stop_blocks_local_assistant_chat(monkeypatch):
+    from app import main
+
+    main._emergency_stop_enabled = False
+    response = client.post("/api/security/emergency-stop", json={"enabled": True})
+    assert response.status_code == 200
+    assert response.json()["emergency_stop_enabled"] is True
+
+    chat = client.post("/api/assistant/chat", json={
+        "messages": [{"role": "user", "content": "Bonjour"}]
+    })
+    assert chat.status_code == 423
+    assert "Arrêt d’urgence activé" in chat.json()["detail"]
+
+    main._emergency_stop_enabled = False
+    monkeypatch.setattr("app.main.get_ollama_status", lambda: {
+        "connected": False, "model": "qwen3.5:0.8b", "message": "Ollama indisponible"
+    })
+    assert client.get("/api/security/status").json()["chat_available"] is True
