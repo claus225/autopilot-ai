@@ -18,9 +18,11 @@ Le connecteur de chat contacte uniquement Ollama à l'adresse fixe `127.0.0.1:11
 
 ## Centre de sécurité et arrêt d'urgence
 
-L'API expose `GET /api/security/status` pour afficher les capacités réellement activées et `POST /api/security/emergency-stop` pour suspendre le chat IA. Lorsque l'arrêt est activé, `POST /api/assistant/chat` répond avec le statut HTTP 423 et refuse la génération. L'interface désactive aussi les notifications locales lorsqu'elle reçoit cet état.
+L'API expose `GET /api/security/status` pour afficher les capacités réellement activées et `POST /api/security/emergency-stop` pour suspendre le chat IA. Lorsque l'arrêt est activé, `POST /api/assistant/chat` répond avec le statut HTTP 423 et refuse la génération. L'état de l'arrêt d'urgence est conservé dans SQLite et survit donc au redémarrage normal de l'API.
 
-**Limites connues :** l'arrêt est conservé en mémoire par le processus API et revient à l'état désactivé après un redémarrage du backend. Il ne supprime pas les tâches déjà enregistrées et ne bloque pas la gestion normale des notes. Les automatisations du navigateur et le contrôle du PC restent absents et désactivés ; il n'existe donc aucune action externe à interrompre dans cette version.
+`GET /api/security/events` fournit un journal limité aux métadonnées des changements d'arrêt d'urgence (type, état, date). Aucun message de chat, texte de tâche ou secret n'est écrit dans ce journal. La limite de consultation est de 50 événements.
+
+**Limites connues :** ce mécanisme protège le chat et l'interface locale contre les nouvelles demandes, mais ne constitue pas encore un coupe-circuit universel pour des automatisations futures. Les automatisations du navigateur et le contrôle du PC restent absents et désactivés. L'API n'a pas encore d'authentification : elle doit rester locale et ne pas être exposée directement sur Internet.
 
 ## Signaler une vulnérabilité
 
