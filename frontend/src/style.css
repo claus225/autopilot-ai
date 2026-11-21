@@ -86,3 +86,6 @@ footer { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; marg
   .reminder-counts { gap: 6px; }
   .reminder-counts div { padding: 10px 8px; }
 }
+
+
+.install-hint { margin: 12px 0 0; color: #9eacc5; font-size: 11px; line-height: 1.5; }
