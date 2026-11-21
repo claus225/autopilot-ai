@@ -266,7 +266,7 @@ export default function App() {
         <form onSubmit={sendChat} className="chat-form">
           <label htmlFor="assistant-message">Ton message</label>
           <textarea id="assistant-message" value={chatInput} onChange={event => setChatInput(event.target.value)} maxLength={2000} rows={3} placeholder="Ex. Aide-moi à organiser ma journée…" />
-          <button disabled={chatBusy || !chatInput.trim()}>{chatBusy ? "Réponse en cours…" : "Envoyer au modèle local"}</button>
+          <button disabled={chatBusy || !chatInput.trim() || !assistantStatus?.connected}>{chatBusy ? "Réponse en cours…" : "Envoyer au modèle local"}</button>
         </form>
       </section>
 
