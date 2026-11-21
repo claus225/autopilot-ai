@@ -25,14 +25,15 @@ Consulte [GETTING_STARTED.md](GETTING_STARTED.md) pour installer Ollama, téléc
 - `frontend/` : mini-application React.
 - `backend/` : API FastAPI, stockage SQLite et tests.
 - `docs/architecture.md` : flux et étapes de conception.
-- `docs/AUTHENTICATION_DESIGN.md` : conception de l'authentification privée avant ouverture publique (pas encore implémentée).
+- `docs/AUTHENTICATION_DESIGN.md` : conception de l'authentification propriétaire.
+- `docs/AUTHENTICATION_IMPLEMENTATION.md` : routes, sessions, protection CSRF et limites restantes.
 - `docs/RENDER_DEPLOYMENT.md` : prérequis de sécurité et de stockage avant Render.
 - `docs/SECURITY_AUDIT_PLAN.md` : périmètre et contrôles de l'audit de sécurité autorisé après publication.
 - `SECURITY.md` : règles de sécurité obligatoires.
 
-Aucune action externe sans confirmation explicite. Pas de collecte de mots de passe, pas de contournement de protections de sites, pas de commandes système arbitraires. Ne publie jamais de clé API ni de fichier `.env`.
+Aucune action externe sans confirmation explicite. Pas de contournement de protections de sites ni de commandes système arbitraires. Ne publie jamais de clé API ni de fichier `.env`.
 
-**Le backend ne doit pas être exposé sur Internet à ce stade.** L'API n'a pas encore d'authentification par utilisateur et refuse donc volontairement les connexions distantes. Le déploiement Render est préparé sur le plan documentaire, mais n'est ni configuré ni publié. Voir [les prérequis Render](docs/RENDER_DEPLOYMENT.md).
+**Le backend ne doit toujours pas être exposé sur Internet.** L'authentification propriétaire est intégrée et les routes métier sont protégées après configuration du compte, mais le garde-fou loopback reste actif. Le stockage persistant et les contrôles adaptés à l'hébergement ne sont pas encore prêts. Le déploiement Render n'est ni configuré ni publié. Voir [les prérequis Render](docs/RENDER_DEPLOYMENT.md).
 
 ## État du prototype
 
@@ -47,8 +48,8 @@ Aucune action externe sans confirmation explicite. Pas de collecte de mots de pa
 - [ ] Notifications réelles (push/e-mail) et planification en arrière-plan
 - [x] Connecteur de chat IA local (Ollama, modèle à installer sur le PC)
 - [x] Arrêt d’urgence persistant dans SQLite et journal de sécurité sans contenu de messages
-- [ ] Protection globale des routes API et interface de connexion (routes de session propriétaire ajoutées, mais API métier encore non protégée)
-- [x] Primitives Argon2id, stockage des sessions, routes setup/login/logout et tests associés
+- [x] Authentification propriétaire Argon2id, sessions expirables/révocables, protection globale des routes métier et CSRF
+- [x] Écrans frontend de première configuration, connexion et déconnexion
 - [ ] Base de données persistante adaptée à l'hébergement
 - [ ] Déploiement Render
 - [ ] Connexion Telegram complète : groupes/canaux autorisés, publications après confirmation, liens d’invitation et historique (seul le contrôle de connexion en lecture seule existe pour l’instant)
