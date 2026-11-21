@@ -22,7 +22,7 @@ L'API expose `GET /api/security/status` pour afficher les capacités réellement
 
 `GET /api/security/events` fournit un journal limité aux métadonnées des changements d'arrêt d'urgence (type, état, date). Aucun message de chat, texte de tâche ou secret n'est écrit dans ce journal. La limite de consultation est de 50 événements.
 
-**Limites connues :** ce mécanisme protège le chat et l'interface locale contre les nouvelles demandes, mais ne constitue pas encore un coupe-circuit universel pour des automatisations futures. Les automatisations du navigateur et le contrôle du PC restent absents et désactivés. L'API refuse les connexions distantes, applique une limite simple de requêtes par adresse cliente, limite les corps de requête annoncés et ajoute des en-têtes HTTP de protection. Elle n'a toutefois pas encore d'authentification par utilisateur : elle doit rester liée à 127.0.0.1 et ne doit pas être exposée directement sur Internet. Ces mesures ne constituent pas une sécurité suffisante pour un service public.
+**Limites connues :** ce mécanisme protège le chat et l'interface locale contre les nouvelles demandes, mais ne constitue pas encore un coupe-circuit universel pour des automatisations futures. Les automatisations du navigateur et le contrôle du PC restent absents et désactivés. L'API refuse toujours les connexions distantes et applique une limite simple de requêtes par adresse cliente, une limite sur le Content-Length annoncé et des en-têtes HTTP de protection. L'authentification propriétaire est maintenant intégrée : après création du compte, les routes métier exigent une session et les requêtes mutatives exigent un contrôle d'origine et un jeton CSRF. En production, l'API se verrouille aussi tant que le compte n'est pas initialisé. Ces protections n'autorisent pas encore un service public : le backend doit rester lié à 127.0.0.1.
 
 ## Signaler une vulnérabilité
 
@@ -38,7 +38,7 @@ Le registre SQLite contient cinq catégories de capacités futures : automatisat
 
 ## Protection de l'API locale
 
-Le middleware refuse les clients dont l'adresse n'est pas une adresse de boucle locale, limite le débit à 60 requêtes par minute et par adresse cliente, refuse les corps annoncés au-delà de 64 Ko et ajoute des en-têtes de protection. Le serveur doit être lancé explicitement sur `127.0.0.1`. La limite basée sur `Content-Length` est une défense complémentaire et ne remplace pas une limite stricte au niveau du serveur/proxy. L'API n'ayant pas encore de gestion de comptes ni d'authentification, aucun déploiement public n'est autorisé.
+Le middleware refuse les clients dont l'adresse n'est pas une adresse de boucle locale, limite le débit à 60 requêtes par minute et par adresse cliente, refuse les corps annoncés au-delà de 64 Ko et ajoute des en-têtes de protection. Le serveur doit être lancé explicitement sur `127.0.0.1`. La limite basée sur `Content-Length` est une défense complémentaire et ne remplace pas une limite stricte au niveau du serveur/proxy. L'authentification propriétaire est implémentée, mais aucun déploiement public n'est autorisé tant que le stockage, les limites de requêtes multi-instance, les limites effectives de corps et la configuration de cookies/CORS ne sont pas validés.
 
 ## Intégration Telegram (phase initiale)
 
@@ -48,12 +48,11 @@ La première version du connecteur lit TELEGRAM_BOT_TOKEN uniquement depuis l'en
 
 Le backend doit rester local tant que les points suivants ne sont pas réalisés et testés :
 
-- Authentification côté serveur, sessions sécurisées, expiration et déconnexion.
-- Protection CSRF et vérification stricte de l'origine autorisée.
-- CORS limité au domaine exact du frontend.
+- Valider le parcours complet d'authentification propriétaire en HTTPS avec l'origine réelle du frontend.
+- Vérifier l'architecture même-site requise par les cookies SameSite=Strict et CORS avec credentials.
 - Limites de débit et de taille de requête adaptées au proxy et à l'environnement multi-instance.
 - Base de données persistante. Le système de fichiers d'un service gratuit peut être éphémère ; SQLite local ne doit pas être supposé durable après redémarrage ou remplacement d'instance.
-- Tests négatifs pour les accès anonymes, les sessions expirées, les origines et jetons CSRF invalides.
+- Tests négatifs pour les accès anonymes, les sessions expirées, les origines et jetons CSRF invalides (tests locaux CI déjà ajoutés, validation sur hébergement encore nécessaire).
 - Déploiement initial sans token Telegram ni actions externes.
 
 Ne supprime jamais le garde-fou loopback pour « faire marcher » le déploiement. La liste complète des étapes figure dans [docs/RENDER_DEPLOYMENT.md](docs/RENDER_DEPLOYMENT.md).
