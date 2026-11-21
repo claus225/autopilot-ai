@@ -169,3 +169,32 @@ def test_next_action_endpoint_is_read_only(monkeypatch):
     assert body["suggestion"] is None
     assert body["execution_enabled"] is False
     assert body["is_ai_generated"] is False
+
+
+def test_local_assistant_status_is_safe_when_ollama_is_unavailable(monkeypatch):
+    from app.main import get_ollama_status
+    monkeypatch.setattr("app.main.urlopen", lambda *args, **kwargs: (_ for _ in ()).throw(OSError("offline")))
+    result = get_ollama_status()
+    assert result["connected"] is False
+    assert result["mode"] == "ollama_unavailable"
+    assert result["execution_enabled"] is False
+
+
+def test_local_assistant_chat_returns_reply_without_executing_actions(monkeypatch):
+    monkeypatch.setattr("app.main.get_ollama_status", lambda: {
+        "connected": True, "model": "qwen3.5:0.8b"
+    })
+    monkeypatch.setattr("app.main.generate_local_reply", lambda messages: "Bonjour !")
+    response = client.post("/api/assistant/chat", json={
+        "messages": [{"role": "user", "content": "Bonjour"}]
+    })
+    assert response.status_code == 200
+    assert response.json()["reply"] == "Bonjour !"
+    assert response.json()["execution_enabled"] is False
+
+
+def test_local_assistant_chat_requires_user_last_message():
+    response = client.post("/api/assistant/chat", json={
+        "messages": [{"role": "assistant", "content": "Salut"}]
+    })
+    assert response.status_code == 422
