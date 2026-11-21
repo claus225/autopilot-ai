@@ -7,6 +7,7 @@ export default function App() {
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [tasks, setTasks] = useState([]);
+  const [reminders, setReminders] = useState({ items: [], counts: { overdue: 0, today: 0, upcoming: 0 } });
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [loadingTasks, setLoadingTasks] = useState(true);
@@ -17,6 +18,8 @@ export default function App() {
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
       setTasks(data.items);
+      const reminderResponse = await fetch(`${API}/api/reminders?days=7`);
+      if (reminderResponse.ok) setReminders(await reminderResponse.json());
     } catch {
       setNotice("Impossible de charger l'historique. Vérifie que l'API est démarrée.");
     } finally {
@@ -74,13 +77,13 @@ export default function App() {
       <header className="topbar">
         <span className="mark">A</span>
         <span>AutoPilot AI</span>
-        <span className="status">Prototype v0.3</span>
+        <span className="status">Prototype v0.4</span>
       </header>
 
       <section className="hero">
         <p className="eyebrow">ASSISTANT HYBRIDE • SÉCURITÉ D'ABORD</p>
         <h1>Tu prépares.<br /><span>AutoPilot organise.</span></h1>
-        <p className="intro">Note tes tâches, ajoute une échéance et suis leur avancement. L'application n'exécute aucune action sur ton ordinateur ou sur des sites externes.</p>
+        <p className="intro">Note tes tâches, ajoute une échéance et repère celles qui approchent. Aucun message ni action externe n’est déclenché automatiquement.</p>
       </section>
 
       <section className="panel">
@@ -95,6 +98,29 @@ export default function App() {
           <button disabled={busy || !title.trim()}>{busy ? "Enregistrement…" : "Enregistrer la tâche"}</button>
         </form>
         {notice && <p className="result" role="status">{notice}</p>}
+      </section>
+
+      <section className="reminder-panel" aria-live="polite">
+        <div className="section-heading">
+          <h2>Aperçu des rappels</h2>
+          <span>7 prochains jours</span>
+        </div>
+        <div className="reminder-counts">
+          <div><strong>{reminders.counts.overdue}</strong><small>En retard</small></div>
+          <div><strong>{reminders.counts.today}</strong><small>Aujourd’hui</small></div>
+          <div><strong>{reminders.counts.upcoming}</strong><small>À venir</small></div>
+        </div>
+        {reminders.items.length > 0 ? (
+          <ul className="reminder-list">
+            {reminders.items.map(item => (
+              <li key={item.id}>
+                <span>{item.title}</span>
+                <small>{item.reminder_type === "overdue" ? "En retard" : item.reminder_type === "today" ? "À faire aujourd’hui" : "Échéance proche"} · {new Date(item.due_date + "T00:00:00").toLocaleDateString("fr-FR")}</small>
+              </li>
+            ))}
+          </ul>
+        ) : <p className="empty">Aucune échéance à signaler sur cette période.</p>}
+        <p className="reminder-note">Cet aperçu ne déclenche pas encore de notification.</p>
       </section>
 
       <section className="tasks">
