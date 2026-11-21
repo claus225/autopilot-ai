@@ -145,3 +145,13 @@ def test_private_api_routes_require_owner_session_and_csrf(tmp_path, monkeypatch
         headers={"Origin": ORIGIN, "X-CSRF-Token": csrf},
     )
     assert owner.get("/api/tasks").status_code == 401
+
+
+def test_production_api_fails_closed_until_owner_setup(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "production-lock.db"))
+    monkeypatch.setenv("APP_ENV", "production")
+    monkeypatch.delenv("AUTOPILOT_SETUP_TOKEN", raising=False)
+    response = client.get("/api/tasks")
+    assert response.status_code == 423
+    assert client.get("/api/auth/status").status_code == 200
+    assert client.get("/api/health").status_code == 200
