@@ -1,14 +1,15 @@
 # AutoPilot AI
 
-Assistant IA hybride pour préparer et organiser des tâches web avec contrôle humain et sécurité en priorité.
+Assistant IA hybride pour préparer, organiser et planifier des tâches avec contrôle humain et sécurité en priorité.
 
-> **Prototype en construction :** l'application enregistre des notes de tâches et leur état. Elle ne pilote pas encore le navigateur ou l'ordinateur et n'exécute aucune action externe.
+> **Prototype en construction :** l'application enregistre des tâches et leurs échéances. Elle ne pilote pas encore le navigateur ou l'ordinateur et n'exécute aucune action externe.
 
 ## Fonctionnalités disponibles
 
 - Interface React/Vite pour ajouter et consulter des tâches.
 - API FastAPI pour créer, lister et mettre à jour l'état des tâches.
-- Persistance locale avec SQLite (fichier de données ignoré par Git).
+- Persistance locale avec SQLite, y compris les dates limites facultatives.
+- Migration automatique de la base SQLite existante pour ajouter le champ d'échéance.
 - Endpoint de prévisualisation qui prépare une proposition sans l'exécuter.
 - Tests backend et compilation frontend via GitHub Actions.
 
@@ -34,11 +35,12 @@ Aucune action externe sans confirmation explicite. Pas de collecte de mots de pa
 - [x] Prévisualisation API non exécutable
 - [x] Création, consultation et suivi d'état des tâches
 - [x] Stockage local SQLite
+- [x] Dates limites facultatives enregistrées avec les tâches
 - [x] Tests backend et compilation frontend dans CI
-- [ ] Rappels et planification avec échéances
+- [ ] Notifications et rappels effectifs
 - [ ] Assistant IA connecté
 - [ ] Automatisation web contrôlée
 - [ ] Agent local facultatif et isolé
 - [ ] PWA et déploiement
 
-Les fonctions non cochées ne sont pas encore disponibles.
+**Important :** une date limite est actuellement enregistrée et affichée. Aucun rappel automatique ou notification n'est encore envoyé. Les fonctions non cochées ne sont pas disponibles.
