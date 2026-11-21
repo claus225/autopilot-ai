@@ -46,3 +46,7 @@ footer { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; marg
 .reminder-list li { display: grid; gap: 5px; padding: 12px; border: 1px solid #34415e; border-radius: 10px; }
 .reminder-list li span { overflow-wrap: anywhere; font-weight: 650; }
 .reminder-note { margin: 12px 0 0; color: #9eacc5; font-size: 11px; line-height: 1.5; }
+
+.notification-panel { margin-top: 22px; padding: 20px; border: 1px solid #34415e; border-radius: 16px; background: #101a2d; }
+.notification-panel input[type="time"] { margin: 10px 0; max-width: 190px; display: block; }
+.notification-panel .secondary-button { border: 1px solid #647797; background: transparent; color: #f8fafc; }
