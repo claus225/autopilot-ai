@@ -17,7 +17,7 @@ Le garde-fou loopback reste volontairement actif. Il ne faut pas le supprimer po
 ## Bloqueurs avant backend public
 
 - Remplacer ou compléter SQLite local par une base persistante adaptée à l'hébergement et aux sauvegardes.
-- Adapter le limiteur de débit actuellement en mémoire et par processus à un environnement multi-instance.
+- Adapter les limiteurs de débit actuellement en mémoire et par processus (60 requêtes/minute pour l'API et cinq tentatives de connexion/15 minutes) à un environnement multi-instance avec un stockage partagé.
 - Ajouter une limite effective de corps de requête au niveau ASGI/proxy, y compris pour les requêtes chunked.
 - Concevoir une architecture de même site ou un proxy de même origine pour les cookies `SameSite=Strict`, puis valider CORS avec credentials et HTTPS.
 - Tester le parcours complet de configuration initiale, connexion, expiration, déconnexion, CSRF et accès anonymes sur un environnement de préproduction.
