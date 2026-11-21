@@ -278,3 +278,32 @@ def test_emergency_stop_persists_and_creates_metadata_audit_event(tmp_path, monk
 
 def test_security_events_limit_is_validated():
     assert client.get("/api/security/events?limit=51").status_code == 422
+
+
+
+def test_security_permissions_default_to_denied(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "permissions.db"))
+    response = client.get("/api/security/permissions")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["policy"] == "default_deny"
+    assert len(body["items"]) == 5
+    assert all(item["enabled"] is False for item in body["items"])
+
+
+def test_unimplemented_permission_cannot_be_enabled(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "permissions-deny.db"))
+    response = client.patch(
+        "/api/security/permissions/browser_automation",
+        json={"enabled": True},
+    )
+    assert response.status_code == 403
+    assert client.get("/api/security/permissions").json()["items"][0]["enabled"] is False
+
+
+def test_unknown_permission_is_rejected():
+    response = client.patch(
+        "/api/security/permissions/unknown_capability",
+        json={"enabled": False},
+    )
+    assert response.status_code == 404
