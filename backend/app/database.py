@@ -55,6 +55,23 @@ def initialize_database() -> None:
             VALUES ('emergency_stop_enabled', 'false')
         """)
         connection.execute("""
+            CREATE TABLE IF NOT EXISTS security_permissions (
+                permission_key TEXT PRIMARY KEY,
+                enabled INTEGER NOT NULL CHECK (enabled IN (0, 1))
+            )
+        """)
+        for permission_key in (
+            "browser_automation",
+            "local_pc_control",
+            "social_publishing",
+            "external_messages",
+            "online_purchases",
+        ):
+            connection.execute(
+                "INSERT OR IGNORE INTO security_permissions (permission_key, enabled) VALUES (?, 0)",
+                (permission_key,),
+            )
+        connection.execute("""
             CREATE TABLE IF NOT EXISTS security_events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 event_type TEXT NOT NULL,
@@ -140,3 +157,24 @@ def list_security_events(limit: int = 20) -> list[dict]:
             (safe_limit,),
         ).fetchall()
         return [{**dict(row), "enabled": bool(row["enabled"])} for row in rows]
+
+
+
+def list_security_permissions() -> list[dict]:
+    initialize_database()
+    with db_connection() as connection:
+        rows = connection.execute(
+            "SELECT permission_key, enabled FROM security_permissions ORDER BY permission_key"
+        ).fetchall()
+        return [{"permission_key": row["permission_key"], "enabled": bool(row["enabled"])} for row in rows]
+
+
+def record_permission_denial(permission_key: str) -> None:
+    from datetime import datetime, timezone
+
+    initialize_database()
+    with db_connection() as connection:
+        connection.execute(
+            "INSERT INTO security_events (event_type, enabled, created_at) VALUES (?, 0, ?)",
+            ("permission_enable_blocked:" + permission_key, datetime.now(timezone.utc).isoformat()),
+        )
