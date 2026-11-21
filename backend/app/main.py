@@ -4,8 +4,12 @@ import os
 import json
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from collections import defaultdict, deque
+from threading import Lock
+from time import monotonic
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request as FastAPIRequest
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
@@ -20,6 +24,54 @@ app = FastAPI(
     version="0.3.0",
     description="Prototype sécurisé : organisation, échéances et suggestions fondées sur des règles, sans exécution externe.",
 )
+
+# Local-only guard, lightweight per-IP rate limit, and baseline response headers.
+_RATE_WINDOW_SECONDS = 60
+_RATE_MAX_REQUESTS = 60
+_rate_buckets: dict[str, deque] = defaultdict(deque)
+_rate_lock = Lock()
+
+
+@app.middleware("http")
+async def protect_api(request: FastAPIRequest, call_next):
+    client_host = request.client.host if request.client else ""
+    # Starlette's in-process test client is allowed for automated tests only.
+    is_test_client = client_host == "testclient"
+    is_loopback = client_host in {"127.0.0.1", "::1", "localhost"}
+    if not (is_loopback or is_test_client):
+        return JSONResponse(
+            status_code=403,
+            content={"detail": "API locale : les connexions distantes sont refusées."},
+        )
+
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > 65536:
+                return JSONResponse(status_code=413, content={"detail": "Requête trop volumineuse."})
+        except ValueError:
+            return JSONResponse(status_code=400, content={"detail": "En-tête Content-Length invalide."})
+
+    now = monotonic()
+    with _rate_lock:
+        bucket = _rate_buckets[client_host]
+        while bucket and now - bucket[0] >= _RATE_WINDOW_SECONDS:
+            bucket.popleft()
+        if len(bucket) >= _RATE_MAX_REQUESTS:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Trop de requêtes. Réessaie dans une minute."},
+                headers={"Retry-After": "60"},
+            )
+        bucket.append(now)
+
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
 
 allowed_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 app.add_middleware(
