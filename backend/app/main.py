@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, field_validator
 from .database import (
     create_task, list_tasks, update_task_status, get_emergency_stop,
     set_emergency_stop as persist_emergency_stop, list_security_events,
+    list_security_permissions, record_permission_denial,
 )
 
 app = FastAPI(
@@ -32,6 +33,19 @@ app.add_middleware(
 
 class EmergencyStopUpdate(BaseModel):
     enabled: bool
+
+
+class PermissionUpdate(BaseModel):
+    enabled: bool
+
+
+PERMISSION_LABELS = {
+    "browser_automation": "Automatisation du navigateur",
+    "local_pc_control": "Contrôle de l’ordinateur",
+    "social_publishing": "Publication sur les réseaux sociaux",
+    "external_messages": "Envoi de messages externes",
+    "online_purchases": "Achats en ligne",
+}
 
 
 class TaskDraft(BaseModel):
@@ -211,6 +225,10 @@ def security_status():
         "browser_automation_enabled": False,
         "local_agent_enabled": False,
         "chat_available": not get_emergency_stop(),
+        "permissions": [
+            {**item, "label": PERMISSION_LABELS[item["permission_key"]]}
+            for item in list_security_permissions()
+        ],
         "message": (
             "Arrêt d’urgence activé : le chat IA est suspendu."
             if get_emergency_stop()
@@ -223,6 +241,35 @@ def security_status():
 def set_emergency_stop(update: EmergencyStopUpdate):
     persist_emergency_stop(update.enabled)
     return security_status()
+
+
+@app.get("/api/security/permissions")
+def security_permissions():
+    return {
+        "items": [
+            {**item, "label": PERMISSION_LABELS[item["permission_key"]]}
+            for item in list_security_permissions()
+        ],
+        "policy": "default_deny",
+        "message": "Toutes les capacités externes restent désactivées dans cette version.",
+    }
+
+
+@app.patch("/api/security/permissions/{permission_key}")
+def update_security_permission(permission_key: str, update: PermissionUpdate):
+    if permission_key not in PERMISSION_LABELS:
+        raise HTTPException(status_code=404, detail="Permission inconnue.")
+    if update.enabled:
+        record_permission_denial(permission_key)
+        raise HTTPException(
+            status_code=403,
+            detail="Cette capacité n’est pas implémentée et ne peut pas être activée.",
+        )
+    return {
+        "permission_key": permission_key,
+        "enabled": False,
+        "message": "Permission maintenue désactivée.",
+    }
 
 
 @app.get("/api/security/events")
