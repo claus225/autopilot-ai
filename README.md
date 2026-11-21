@@ -36,11 +36,12 @@ Aucune action externe sans confirmation explicite. Pas de collecte de mots de pa
 - [x] Création, consultation et suivi d'état des tâches
 - [x] Stockage local SQLite
 - [x] Dates limites facultatives enregistrées avec les tâches
+- [x] Aperçu des échéances et classification des tâches à rappeler
 - [x] Tests backend et compilation frontend dans CI
-- [ ] Notifications et rappels effectifs
+- [ ] Notifications réelles (push/e-mail) et planification en arrière-plan
 - [ ] Assistant IA connecté
 - [ ] Automatisation web contrôlée
 - [ ] Agent local facultatif et isolé
 - [ ] PWA et déploiement
 
-**Important :** une date limite est actuellement enregistrée et affichée. Aucun rappel automatique ou notification n'est encore envoyé. Les fonctions non cochées ne sont pas disponibles.
+**Important :** une date limite est actuellement enregistrée et affichée. L'aperçu des échéances est disponible, mais aucun rappel automatique, notification push ou e-mail n'est envoyé. Les fonctions non cochées ne sont pas disponibles.
