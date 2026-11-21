@@ -90,6 +90,8 @@ export default function App() {
           nextMode = session.ok ? "ready" : "login";
         } else if (status.setup_available) {
           nextMode = "setup";
+        } else if (status.access_locked) {
+          nextMode = "locked";
         }
         if (cancelled) return;
         setAuthMode(nextMode);
@@ -348,6 +350,10 @@ export default function App() {
         </section>
       </main>
     );
+  }
+
+  if (authMode === "locked") {
+    return <main className="shell"><header className="topbar"><span className="mark">A</span><span>AutoPilot AI</span></header><section className="panel"><h2>Configuration sécurisée requise</h2><p className="reminder-note">L'accès est verrouillé tant que le compte propriétaire et le secret d'initialisation ne sont pas configurés sur le serveur. Aucun endpoint métier n'est ouvert.</p></section></main>;
   }
 
   if (authMode === "offline") {
