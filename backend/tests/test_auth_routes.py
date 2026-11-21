@@ -193,3 +193,16 @@ def test_login_throttles_after_five_attempts(tmp_path, monkeypatch):
     assert blocked.status_code == 429
     assert blocked.headers["Retry-After"] == "900"
     auth_routes._login_attempts.clear()
+
+
+
+def test_login_limiter_bounds_distinct_client_entries():
+    from app import auth_routes
+
+    auth_routes._login_attempts.clear()
+    for index in range(auth_routes._LOGIN_MAX_CLIENTS):
+        assert auth_routes._consume_login_attempt(f"192.0.2.{index}") is True
+
+    assert auth_routes._consume_login_attempt("198.51.100.1") is False
+    assert len(auth_routes._login_attempts) == auth_routes._LOGIN_MAX_CLIENTS
+    auth_routes._login_attempts.clear()
