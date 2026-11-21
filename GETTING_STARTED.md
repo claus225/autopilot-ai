@@ -56,7 +56,8 @@ La compilation frontend est vérifiée automatiquement par le workflow GitHub Ac
 - Retrouver les tâches enregistrées après redémarrage grâce à SQLite.
 - Marquer une tâche comme terminée ou à faire.
 - Préparer un aperçu de tâche sans déclencher son exécution.
-- Consulter les échéances en retard, du jour et des 7 prochains jours dans le tableau de bord.\n- Activer des notifications locales du navigateur, avec choix de l'heure, pour les tâches dues aujourd'hui.
+- Consulter les échéances en retard, du jour et des 7 prochains jours dans le tableau de bord.
+- Activer des notifications locales du navigateur, avec choix de l'heure, pour les tâches dues aujourd'hui.
 - Consulter l'API en lecture seule avec `GET /api/reminders?days=7` (période autorisée : 0 à 30 jours).
 
 La base SQLite est créée localement par le backend dans `backend/data/` par défaut. Ce dossier est exclu de Git. Si une base plus ancienne existe, le backend ajoute automatiquement la colonne de date limite manquante.
