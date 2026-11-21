@@ -24,6 +24,7 @@ export default function App() {
   const [loadingTasks, setLoadingTasks] = useState(true);
   const [notificationSettings, setNotificationSettings] = useState(readSettings);
   const [notificationStatus, setNotificationStatus] = useState("");
+  const [nextAction, setNextAction] = useState(null);
 
   async function loadTasks() {
     try {
@@ -31,6 +32,8 @@ export default function App() {
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
       setTasks(data.items);
+      const suggestionResponse = await fetch(`${API}/api/assistant/next-action`);
+      if (suggestionResponse.ok) setNextAction(await suggestionResponse.json());
       const reminderResponse = await fetch(`${API}/api/reminders?days=7`);
       if (reminderResponse.ok) setReminders(await reminderResponse.json());
     } catch {
@@ -112,6 +115,8 @@ export default function App() {
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
       setTasks(current => [data.item, ...current]);
+      const suggestionResponse = await fetch(`${API}/api/assistant/next-action`);
+      if (suggestionResponse.ok) setNextAction(await suggestionResponse.json());
       setTitle("");
       setDescription("");
       setDueDate("");
@@ -134,6 +139,8 @@ export default function App() {
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
       setTasks(current => current.map(item => item.id === task.id ? data.item : item));
+      const suggestionResponse = await fetch(`${API}/api/assistant/next-action`);
+      if (suggestionResponse.ok) setNextAction(await suggestionResponse.json());
       setNotice(data.message);
     } catch {
       setNotice("Impossible de modifier cette tâche pour le moment.");
@@ -203,6 +210,19 @@ export default function App() {
         )}
         {notificationStatus && <p className="result" role="status">{notificationStatus}</p>}
         <p className="reminder-note">Limite : les notifications fonctionnent uniquement si le site est ouvert et si le navigateur les autorise. Elles ne sont pas envoyées lorsque l'application est fermée.</p>
+      </section>
+
+
+      <section className="assistant-panel" aria-live="polite">
+        <div className="section-heading"><h2>Assistant de priorité</h2><span>Conseil automatique</span></div>
+        {nextAction?.suggestion ? (
+          <>
+            <p className="assistant-priority">Priorité : {nextAction.priority === "urgent" ? "Urgente" : nextAction.priority === "high" ? "Élevée" : "Normale"}</p>
+            <strong>{nextAction.suggestion.title}</strong>
+            <p className="reminder-note">{nextAction.reason}</p>
+          </>
+        ) : <p className="empty">{nextAction?.reason || "Analyse des tâches…"}</p>}
+        <p className="reminder-note">Conseil fondé sur des règles simples, pas encore sur un modèle IA. Aucune tâche n'est exécutée.</p>
       </section>
 
       <section className="tasks">
