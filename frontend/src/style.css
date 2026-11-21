@@ -50,3 +50,6 @@ footer { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; marg
 .notification-panel { margin-top: 22px; padding: 20px; border: 1px solid #34415e; border-radius: 16px; background: #101a2d; }
 .notification-panel input[type="time"] { margin: 10px 0; max-width: 190px; display: block; }
 .notification-panel .secondary-button { border: 1px solid #647797; background: transparent; color: #f8fafc; }
+
+.assistant-panel { margin-top: 22px; padding: 20px; border: 1px solid #465b80; border-radius: 16px; background: #15213a; }
+.assistant-priority { margin: 14px 0 6px; color: #c4d5f4; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; }
