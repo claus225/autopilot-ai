@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 import os
 
@@ -11,7 +11,7 @@ from .database import create_task, list_tasks, update_task_status
 app = FastAPI(
     title="AutoPilot AI API",
     version="0.3.0",
-    description="Prototype sécurisé : organisation et planification simple de tâches, sans exécution externe.",
+    description="Prototype sécurisé : organisation, échéances et aperçu de rappels, sans notification ni exécution externe.",
 )
 
 allowed_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
@@ -47,9 +47,47 @@ class TaskStatusUpdate(BaseModel):
     status: Literal["todo", "completed"]
 
 
+def build_reminders(tasks: list[dict], today: date, days: int = 7) -> dict:
+    """Classify pending dated tasks; this only prepares reminder data."""
+    horizon = today + timedelta(days=days)
+    items = []
+    for task in tasks:
+        if task["status"] != "todo" or not task.get("due_date"):
+            continue
+        due = date.fromisoformat(task["due_date"])
+        if due > horizon:
+            continue
+        if due < today:
+            category = "overdue"
+        elif due == today:
+            category = "today"
+        else:
+            category = "upcoming"
+        items.append({**task, "reminder_type": category})
+    items.sort(key=lambda item: (item["due_date"], item["id"]))
+    return {
+        "items": items,
+        "counts": {
+            "overdue": sum(item["reminder_type"] == "overdue" for item in items),
+            "today": sum(item["reminder_type"] == "today" for item in items),
+            "upcoming": sum(item["reminder_type"] == "upcoming" for item in items),
+        },
+        "notifications_sent": False,
+        "message": "Aperçu des échéances uniquement : aucune notification n'a été envoyée.",
+    }
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "service": "autopilot-ai-api", "version": "0.3.0"}
+
+
+@app.get("/api/reminders")
+def get_reminders(days: int = 7):
+    """Return an overview of pending due dates; never sends notifications."""
+    if days < 0 or days > 30:
+        raise HTTPException(status_code=422, detail="La période doit être comprise entre 0 et 30 jours.")
+    return build_reminders(list_tasks(), date.today(), days)
 
 
 @app.post("/api/tasks/preview")
