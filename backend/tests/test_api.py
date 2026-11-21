@@ -108,3 +108,27 @@ def test_reminder_endpoint_returns_preview_only(tmp_path, monkeypatch):
 
 def test_reminder_window_is_limited():
     assert client.get("/api/reminders?days=31").status_code == 422
+
+
+def test_next_action_prioritizes_overdue_task():
+    from app.main import build_next_action
+
+    tasks = [
+        {"id": 1, "title": "Aujourd'hui", "status": "todo", "due_date": "2026-11-21", "created_at": "2026-11-20"},
+        {"id": 2, "title": "En retard", "status": "todo", "due_date": "2026-11-19", "created_at": "2026-11-18"},
+        {"id": 3, "title": "Terminée", "status": "completed", "due_date": "2026-11-18", "created_at": "2026-11-17"},
+    ]
+    result = build_next_action(tasks, date(2026, 11, 21))
+    assert result["suggestion"]["id"] == 2
+    assert result["priority"] == "urgent"
+    assert result["method"] == "rules"
+    assert result["is_ai_generated"] is False
+    assert result["execution_enabled"] is False
+
+
+def test_next_action_handles_empty_task_list():
+    from app.main import build_next_action
+
+    result = build_next_action([], date(2026, 11, 21))
+    assert result["suggestion"] is None
+    assert result["priority"] == "none"
