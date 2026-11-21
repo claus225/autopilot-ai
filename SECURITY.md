@@ -12,6 +12,10 @@ La sécurité prime sur l'autonomie. AutoPilot AI est un prototype et ne doit pa
 6. Limiter l'agent local à une liste d'actions et de répertoires autorisés ; désactivé par défaut.
 7. Prévoir un arrêt d'urgence, des journaux expurgés de données sensibles et une confirmation avant chaque action à impact externe.
 
+## Assistant IA local
+
+Le connecteur de chat contacte uniquement Ollama à l'adresse fixe `127.0.0.1:11434`. Aucun fournisseur distant ni clé API n'est utilisé. Le modèle reçoit uniquement l'historique textuel du chat, dans une limite de taille. Il ne reçoit aucun outil, accès aux fichiers, navigateur, compte ou commande système. Le statut « prêt » signifie que le service local répond et que le modèle configuré est installé ; cela ne signifie pas que l'application est autorisée à agir.
+
 ## Signaler une vulnérabilité
 
 Ne publiez pas de secret ni de détail exploitable dans une issue publique. Contactez le propriétaire du dépôt via les moyens privés de GitHub.
