@@ -1,6 +1,21 @@
 import { useEffect, useState } from "react";
 
-const API = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
+function readCookie(name) {
+  const entry = document.cookie.split("; ").find(item => item.startsWith(`${name}=`));
+  return entry ? decodeURIComponent(entry.slice(name.length + 1)) : "";
+}
+
+async function apiFetch(path, options = {}) {
+  const headers = new Headers(options.headers || {});
+  const method = (options.method || "GET").toUpperCase();
+  if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+    const csrf = readCookie("autopilot_csrf");
+    if (csrf) headers.set("X-CSRF-Token", csrf);
+  }
+  return fetch(`${API}${path}`, { ...options, headers, credentials: "include" });
+}
 const SETTINGS_KEY = "autopilot-reminder-settings";
 const SENT_KEY = "autopilot-reminders-sent";
 
@@ -34,10 +49,14 @@ export default function App() {
   const [securityBusy, setSecurityBusy] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [authMode, setAuthMode] = useState("checking");
+  const [authPassword, setAuthPassword] = useState("");
+  const [setupToken, setSetupToken] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
 
   async function loadTasks() {
     try {
-      const response = await fetch(`${API}/api/tasks`);
+      const response = await apiFetch(`/api/tasks`);
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
       setTasks(data.items);
@@ -58,7 +77,34 @@ export default function App() {
     }
   }
 
-  useEffect(() => { loadTasks(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    async function initializeAuth() {
+      try {
+        const response = await apiFetch("/api/auth/status");
+        if (!response.ok) throw new Error("Statut d'authentification indisponible.");
+        const status = await response.json();
+        let nextMode = "open";
+        if (status.owner_configured) {
+          const session = await apiFetch("/api/auth/me");
+          nextMode = session.ok ? "ready" : "login";
+        } else if (status.setup_available) {
+          nextMode = "setup";
+        }
+        if (cancelled) return;
+        setAuthMode(nextMode);
+        if (nextMode === "ready" || nextMode === "open") await loadTasks();
+      } catch {
+        if (!cancelled) {
+          setAuthMode("offline");
+          setNotice("Impossible de joindre l'API AutoPilot AI.");
+          setLoadingTasks(false);
+        }
+      }
+    }
+    initializeAuth();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     const standalone = window.matchMedia?.("(display-mode: standalone)").matches
@@ -240,11 +286,80 @@ export default function App() {
     }
   }
 
+
+  async function submitAuth(event) {
+    event.preventDefault();
+    if (authBusy) return;
+    setAuthBusy(true);
+    setNotice("");
+    const isSetup = authMode === "setup";
+    try {
+      const response = await apiFetch(isSetup ? "/api/auth/setup" : "/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(isSetup ? { setup_token: setupToken, password: authPassword } : { password: authPassword }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || "Authentification refusée.");
+      setAuthPassword("");
+      setSetupToken("");
+      setAuthMode("ready");
+      await loadTasks();
+    } catch (error) {
+      setNotice(error.message || "Impossible de se connecter.");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function logout() {
+    try {
+      const response = await apiFetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) throw new Error("Impossible de fermer la session.");
+      setAuthMode("login");
+      setTasks([]);
+      setChatMessages([]);
+      setNotice("Session fermée.");
+    } catch (error) {
+      setNotice(error.message || "Erreur pendant la déconnexion.");
+    }
+  }
+
+  if (authMode === "checking") {
+    return <main className="shell"><header className="topbar"><span className="mark">A</span><span>AutoPilot AI</span></header><p className="empty">Vérification de la session sécurisée…</p></main>;
+  }
+
+  if (authMode === "login" || authMode === "setup") {
+    const isSetup = authMode === "setup";
+    return (
+      <main className="shell">
+        <header className="topbar"><span className="mark">A</span><span>AutoPilot AI</span><span className="status">Espace privé</span></header>
+        <section className="hero"><p className="eyebrow">ACCÈS PROPRIÉTAIRE</p><h1>{isSetup ? "Créer ton compte." : "Bon retour."}<br /><span>AutoPilot AI</span></h1><p className="intro">Cet espace est privé. Les identifiants sont envoyés uniquement à ton serveur et ne sont pas enregistrés dans le navigateur.</p></section>
+        <section className="panel">
+          <h2>{isSetup ? "Configuration initiale" : "Connexion"}</h2>
+          <form onSubmit={submitAuth}>
+            {isSetup && <><label htmlFor="setup-token">Secret d'initialisation du serveur</label><input id="setup-token" type="password" value={setupToken} onChange={event => setSetupToken(event.target.value)} minLength={32} maxLength={512} autoComplete="off" required /></>}
+            <label htmlFor="owner-password">Mot de passe propriétaire</label>
+            <input id="owner-password" type="password" value={authPassword} onChange={event => setAuthPassword(event.target.value)} minLength={12} maxLength={1024} autoComplete={isSetup ? "new-password" : "current-password"} required />
+            <button disabled={authBusy || authPassword.length < 12 || (isSetup && setupToken.length < 32)}>{authBusy ? "Vérification…" : isSetup ? "Créer le compte privé" : "Se connecter"}</button>
+          </form>
+          {notice && <p className="result" role="status">{notice}</p>}
+          <p className="reminder-note">Ne partage jamais le secret d'initialisation ni ton mot de passe. Après la première création, le compte ne peut plus être recréé depuis cette page.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (authMode === "offline") {
+    return <main className="shell"><header className="topbar"><span className="mark">A</span><span>AutoPilot AI</span></header><p className="result">{notice}</p></main>;
+  }
+
   return (
     <main className="shell">
       <header className="topbar">
         <span className="mark">A</span>
         <span>AutoPilot AI</span>
+        {authMode === "ready" && <button className="install-button" type="button" onClick={logout}>Déconnexion</button>}
         {isInstalled ? (
           <span className="status">Application installée</span>
         ) : installPrompt ? (
