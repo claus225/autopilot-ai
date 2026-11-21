@@ -34,3 +34,5 @@ button:disabled { opacity: .55; cursor: not-allowed; }
 .task-copy .done { color: #91a0b7; text-decoration: line-through; }
 footer { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; margin-top: 30px; color: #8f9bb2; font-size: 12px; }
 @media (max-width: 520px) { .hero { padding-top: 54px; } .panel { padding: 19px; } h1 { letter-spacing: -2px; } .section-heading { align-items: flex-start; flex-direction: column; } }
+
+.due-date { display: block; margin: 7px 0 3px; color: #b8c9e8 !important; }
