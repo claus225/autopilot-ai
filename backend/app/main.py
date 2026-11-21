@@ -75,6 +75,34 @@ async def protect_api(request: FastAPIRequest, call_next):
             ))
         bucket.append(now)
 
+    # Once the private owner account exists, protect every business/API route.
+    # Auth endpoints keep their own route-level checks; health remains public.
+    if request.url.path not in {"/api/health", "/api/auth/status", "/api/auth/setup", "/api/auth/login"}:
+        from .database import get_owner_account
+        if get_owner_account() is not None and not request.url.path.startswith("/api/auth/"):
+            from .auth_service import get_active_owner_session, verify_session_csrf
+            session_token = request.cookies.get("autopilot_session", "")
+            active_session = get_active_owner_session(session_token)
+            if active_session is None:
+                return security_headers(JSONResponse(
+                    status_code=401,
+                    content={"detail": "Authentification requise."},
+                ))
+            if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+                expected_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173").rstrip("/")
+                supplied_origin = request.headers.get("origin", "").rstrip("/")
+                if not supplied_origin or supplied_origin != expected_origin:
+                    return security_headers(JSONResponse(
+                        status_code=403,
+                        content={"detail": "Origine refusée."},
+                    ))
+                csrf_token = request.headers.get("x-csrf-token", "")
+                if not verify_session_csrf(active_session, csrf_token):
+                    return security_headers(JSONResponse(
+                        status_code=403,
+                        content={"detail": "Jeton CSRF invalide."},
+                    ))
+
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
@@ -87,9 +115,9 @@ allowed_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[allowed_origin],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-CSRF-Token"],
 )
 
 
