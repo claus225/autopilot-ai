@@ -20,16 +20,15 @@ Assistant IA hybride pour préparer, organiser et planifier des tâches avec con
 
 Consulte [GETTING_STARTED.md](GETTING_STARTED.md) pour installer Ollama, télécharger le modèle local et lancer l'API FastAPI et l'interface React/Vite sur ton ordinateur.
 
-## Architecture
+## Architecture et sécurité
 
 - `frontend/` : mini-application React.
 - `backend/` : API FastAPI, stockage SQLite et tests.
 - `docs/architecture.md` : flux et étapes de conception.
+- `docs/AUTHENTICATION_DESIGN.md` : conception de l'authentification privée avant ouverture publique (pas encore implémentée).
 - `docs/RENDER_DEPLOYMENT.md` : prérequis de sécurité et de stockage avant Render.
 - `docs/SECURITY_AUDIT_PLAN.md` : périmètre et contrôles de l'audit de sécurité autorisé après publication.
 - `SECURITY.md` : règles de sécurité obligatoires.
-
-## Sécurité
 
 Aucune action externe sans confirmation explicite. Pas de collecte de mots de passe, pas de contournement de protections de sites, pas de commandes système arbitraires. Ne publie jamais de clé API ni de fichier `.env`.
 
