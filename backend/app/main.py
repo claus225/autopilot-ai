@@ -27,6 +27,14 @@ app.add_middleware(
 )
 
 
+class EmergencyStopUpdate(BaseModel):
+    enabled: bool
+
+
+# Process-level switch; defaults to off after an API restart.
+_emergency_stop_enabled = False
+
+
 class TaskDraft(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     description: str = Field(default="", max_length=1000)
@@ -196,6 +204,29 @@ def generate_local_reply(messages: list[dict]) -> str:
         raise HTTPException(status_code=503, detail="Ollama est indisponible. Vérifie qu'il est démarré sur cet ordinateur.")
 
 
+@app.get("/api/security/status")
+def security_status():
+    return {
+        "emergency_stop_enabled": _emergency_stop_enabled,
+        "external_actions_enabled": False,
+        "browser_automation_enabled": False,
+        "local_agent_enabled": False,
+        "chat_available": not _emergency_stop_enabled,
+        "message": (
+            "Arrêt d’urgence activé : le chat IA est suspendu."
+            if _emergency_stop_enabled
+            else "Mode protégé : aucune action externe ni automatisation n’est activée."
+        ),
+    }
+
+
+@app.post("/api/security/emergency-stop")
+def set_emergency_stop(update: EmergencyStopUpdate):
+    global _emergency_stop_enabled
+    _emergency_stop_enabled = update.enabled
+    return security_status()
+
+
 @app.get("/api/assistant/status")
 def assistant_status():
     return get_ollama_status()
@@ -203,6 +234,8 @@ def assistant_status():
 
 @app.post("/api/assistant/chat")
 def assistant_chat(chat: ChatRequest):
+    if _emergency_stop_enabled:
+        raise HTTPException(status_code=423, detail="Arrêt d’urgence activé : le chat IA est suspendu.")
     status = get_ollama_status()
     if not status["connected"]:
         raise HTTPException(status_code=503, detail=status["message"])
