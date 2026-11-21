@@ -79,7 +79,18 @@ async def protect_api(request: FastAPIRequest, call_next):
     # Auth endpoints keep their own route-level checks; health remains public.
     if request.url.path not in {"/api/health", "/api/auth/status", "/api/auth/setup", "/api/auth/login"}:
         from .database import get_owner_account
-        if get_owner_account() is not None and not request.url.path.startswith("/api/auth/"):
+        owner_configured = get_owner_account() is not None
+        auth_required = (
+            owner_configured
+            or os.getenv("APP_ENV", "development").lower() == "production"
+            or bool(os.getenv("AUTOPILOT_SETUP_TOKEN", "").strip())
+        )
+        if auth_required and request.url.path not in {"/api/auth/me", "/api/auth/logout"}:
+            if not owner_configured:
+                return security_headers(JSONResponse(
+                    status_code=423,
+                    content={"detail": "Configuration initiale du compte propriétaire requise."},
+                ))
             from .auth_service import get_active_owner_session, verify_session_csrf
             session_token = request.cookies.get("autopilot_session", "")
             active_session = get_active_owner_session(session_token)
