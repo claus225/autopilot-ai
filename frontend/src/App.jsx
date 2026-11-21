@@ -29,6 +29,8 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
+  const [securityStatus, setSecurityStatus] = useState(null);
+  const [securityBusy, setSecurityBusy] = useState(false);
 
   async function loadTasks() {
     try {
@@ -36,6 +38,8 @@ export default function App() {
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
       setTasks(data.items);
+      const securityResponse = await fetch(`${API}/api/security/status`);
+      if (securityResponse.ok) setSecurityStatus(await securityResponse.json());
       const statusResponse = await fetch(`${API}/api/assistant/status`);
       if (statusResponse.ok) setAssistantStatus(await statusResponse.json());
       const suggestionResponse = await fetch(`${API}/api/assistant/next-action`);
@@ -56,7 +60,7 @@ export default function App() {
   }, [notificationSettings]);
 
   useEffect(() => {
-    if (!notificationSettings.enabled || !("Notification" in window) || Notification.permission !== "granted") return undefined;
+    if (securityStatus?.emergency_stop_enabled || !notificationSettings.enabled || !("Notification" in window) || Notification.permission !== "granted") return undefined;
 
     const checkDueTasks = () => {
       const now = new Date();
@@ -82,7 +86,7 @@ export default function App() {
     checkDueTasks();
     const intervalId = window.setInterval(checkDueTasks, 30_000);
     return () => window.clearInterval(intervalId);
-  }, [notificationSettings, tasks]);
+  }, [notificationSettings, tasks, securityStatus]);
 
   async function enableNotifications() {
     if (!("Notification" in window)) {
@@ -112,7 +116,7 @@ export default function App() {
   async function sendChat(event) {
     event.preventDefault();
     const content = chatInput.trim();
-    if (!content || chatBusy) return;
+    if (!content || chatBusy || securityStatus?.emergency_stop_enabled) return;
     const nextMessages = [...chatMessages, { role: "user", content }];
     setChatMessages(nextMessages);
     setChatInput("");
@@ -132,6 +136,30 @@ export default function App() {
       setChatBusy(false);
     }
   }
+
+  async function toggleEmergencyStop() {
+    if (securityBusy) return;
+    setSecurityBusy(true);
+    try {
+      const response = await fetch(`${API}/api/security/emergency-stop`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled: !securityStatus?.emergency_stop_enabled }),
+      });
+      if (!response.ok) throw new Error("Impossible de modifier l'arrêt d'urgence.");
+      const data = await response.json();
+      setSecurityStatus(data);
+      setNotice(data.message);
+      if (data.emergency_stop_enabled) {
+        setNotificationSettings(current => ({ ...current, enabled: false }));
+      }
+    } catch (error) {
+      setNotice(error.message || "Le centre de sécurité est indisponible.");
+    } finally {
+      setSecurityBusy(false);
+    }
+  }
+
 
   async function saveTask(event) {
     event.preventDefault();
@@ -245,6 +273,30 @@ export default function App() {
 
 
 
+      <section className="security-panel" aria-live="polite">
+        <div className="section-heading">
+          <h2>Centre de sécurité</h2>
+          <span>{securityStatus?.emergency_stop_enabled ? "Pause active" : "Protection active"}</span>
+        </div>
+        <p className="reminder-note">{securityStatus?.message || "Lecture de l'état de sécurité…"}</p>
+        <ul className="security-list">
+          <li><span>Actions externes</span><strong>Désactivées</strong></li>
+          <li><span>Automatisation du navigateur</span><strong>Désactivée</strong></li>
+          <li><span>Agent de contrôle du PC</span><strong>Désactivé</strong></li>
+          <li><span>Chat IA</span><strong>{securityStatus?.chat_available ? "Disponible si Ollama est prêt" : "Suspendu"}</strong></li>
+        </ul>
+        <button
+          type="button"
+          className={securityStatus?.emergency_stop_enabled ? "secondary-button" : "danger-button"}
+          onClick={toggleEmergencyStop}
+          disabled={securityBusy || !securityStatus}
+        >
+          {securityBusy ? "Mise à jour…" : securityStatus?.emergency_stop_enabled ? "Désactiver l'arrêt d'urgence" : "Activer l'arrêt d'urgence"}
+        </button>
+        <p className="reminder-note">L'arrêt d'urgence suspend le chat IA côté serveur et les notifications locales dans cette interface. Les notes et tâches déjà enregistrées restent intactes. Le réglage serveur est réinitialisé au redémarrage de l'API.</p>
+      </section>
+
+
       <section className="assistant-status-panel" aria-live="polite">
         <strong>{assistantStatus?.connected ? "Moteur IA connecté" : "Moteur IA non connecté"}</strong>
         <p>{assistantStatus?.message || "Vérification de la configuration IA…"}</p>
@@ -252,7 +304,7 @@ export default function App() {
 
 
       <section className="chat-panel">
-        <div className="section-heading"><h2>Assistant IA local</h2><span>{assistantStatus?.connected ? "Prêt" : "En attente"}</span></div>
+        <div className="section-heading"><h2>Assistant IA local</h2><span>{securityStatus?.emergency_stop_enabled ? "Suspendu par la sécurité" : assistantStatus?.connected ? "Prêt" : "En attente"}</span></div>
         <p className="reminder-note">Les messages sont traités par le modèle installé sur cet ordinateur. Aucun accès aux fichiers, au navigateur ou aux comptes n'est accordé à l'assistant.</p>
         <div className="chat-transcript" aria-live="polite">
           {chatMessages.length === 0 ? <p className="empty">Installe et démarre le modèle local pour commencer une conversation.</p> : chatMessages.map((message, index) => (
@@ -266,7 +318,7 @@ export default function App() {
         <form onSubmit={sendChat} className="chat-form">
           <label htmlFor="assistant-message">Ton message</label>
           <textarea id="assistant-message" value={chatInput} onChange={event => setChatInput(event.target.value)} maxLength={2000} rows={3} placeholder="Ex. Aide-moi à organiser ma journée…" />
-          <button disabled={chatBusy || !chatInput.trim() || !assistantStatus?.connected}>{chatBusy ? "Réponse en cours…" : "Envoyer au modèle local"}</button>
+          <button disabled={chatBusy || !chatInput.trim() || !assistantStatus?.connected || securityStatus?.emergency_stop_enabled}>{chatBusy ? "Réponse en cours…" : "Envoyer au modèle local"}</button>
         </form>
       </section>
 
