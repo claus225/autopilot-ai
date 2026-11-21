@@ -29,6 +29,7 @@ CSRF_COOKIE = "autopilot_csrf"
 # In-process defense in depth; hosting still needs a shared proxy limiter.
 _LOGIN_WINDOW_SECONDS = 15 * 60
 _LOGIN_MAX_ATTEMPTS = 5
+_LOGIN_MAX_CLIENTS = 1024
 _login_attempts: dict[str, deque] = defaultdict(deque)
 _login_lock = Lock()
 
@@ -37,17 +38,22 @@ def _consume_login_attempt(client_ip: str) -> bool:
     now = monotonic()
     key = client_ip or "unknown"
     with _login_lock:
-        bucket = _login_attempts[key]
+        bucket = _login_attempts.get(key)
+        if bucket is None:
+            # Bound memory even if a client can present many distinct source IPs.
+            if len(_login_attempts) >= _LOGIN_MAX_CLIENTS:
+                stale = [ip for ip, attempts in _login_attempts.items()
+                         if not attempts or now - attempts[-1] >= _LOGIN_WINDOW_SECONDS]
+                for ip in stale:
+                    _login_attempts.pop(ip, None)
+                if len(_login_attempts) >= _LOGIN_MAX_CLIENTS:
+                    return False
+            bucket = _login_attempts[key]
         while bucket and now - bucket[0] >= _LOGIN_WINDOW_SECONDS:
             bucket.popleft()
         if len(bucket) >= _LOGIN_MAX_ATTEMPTS:
             return False
         bucket.append(now)
-        if len(_login_attempts) > 1024:
-            stale = [ip for ip, attempts in _login_attempts.items()
-                     if not attempts or now - attempts[-1] >= _LOGIN_WINDOW_SECONDS]
-            for ip in stale:
-                _login_attempts.pop(ip, None)
         return True
 
 
