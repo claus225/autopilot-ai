@@ -249,6 +249,12 @@ def test_emergency_stop_blocks_local_assistant_chat(tmp_path, monkeypatch):
     assert response.status_code == 200
     assert response.json()["emergency_stop_enabled"] is True
 
+    def unexpected_model_access(*args, **kwargs):
+        raise AssertionError("Le modèle ne doit pas être contacté pendant l'arrêt d'urgence.")
+
+    monkeypatch.setattr("app.main.get_ollama_status", unexpected_model_access)
+    monkeypatch.setattr("app.main.generate_local_reply", unexpected_model_access)
+
     chat = client.post("/api/assistant/chat", json={
         "messages": [{"role": "user", "content": "Bonjour"}]
     })
