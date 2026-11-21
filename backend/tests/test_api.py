@@ -319,6 +319,15 @@ def test_api_adds_security_response_headers():
     assert response.headers["cache-control"] == "no-store"
 
 
+def test_api_rejects_remote_clients_with_security_headers():
+    with TestClient(app, client=("192.0.2.10", 54321)) as remote_client:
+        response = remote_client.get("/api/health")
+    assert response.status_code == 403
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["cache-control"] == "no-store"
+
+
 def test_api_rejects_oversized_announced_request_body():
     response = client.post(
         "/api/tasks",
@@ -326,3 +335,5 @@ def test_api_rejects_oversized_announced_request_body():
         headers={"Content-Type": "application/json", "Content-Length": "70000"},
     )
     assert response.status_code == 413
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
