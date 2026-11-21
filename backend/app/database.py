@@ -79,6 +79,92 @@ def initialize_database() -> None:
                 created_at TEXT NOT NULL
             )
         """)
+        # One private owner only: there is deliberately no public signup table/API.
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS owner_account (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                password_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS auth_sessions (
+                session_fingerprint TEXT PRIMARY KEY,
+                csrf_fingerprint TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                revoked_at TEXT
+            )
+        """)
+        connection.execute("""
+            CREATE INDEX IF NOT EXISTS idx_auth_sessions_expiry
+            ON auth_sessions(expires_at)
+        """)
+
+
+def create_owner_account(password_hash: str, created_at: str) -> bool:
+    """Create the single owner once; never overwrite an existing credential."""
+    initialize_database()
+    with db_connection() as connection:
+        cursor = connection.execute(
+            "INSERT OR IGNORE INTO owner_account (id, password_hash, created_at) VALUES (1, ?, ?)",
+            (password_hash, created_at),
+        )
+        return cursor.rowcount == 1
+
+
+def get_owner_account() -> dict | None:
+    initialize_database()
+    with db_connection() as connection:
+        row = connection.execute(
+            "SELECT id, password_hash, created_at FROM owner_account WHERE id = 1"
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def create_auth_session(
+    session_fingerprint: str,
+    csrf_fingerprint: str,
+    created_at: str,
+    expires_at: str,
+) -> None:
+    """Store only token fingerprints; raw session and CSRF tokens stay in cookies."""
+    initialize_database()
+    with db_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO auth_sessions
+                (session_fingerprint, csrf_fingerprint, created_at, expires_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (session_fingerprint, csrf_fingerprint, created_at, expires_at),
+        )
+
+
+def get_auth_session(session_fingerprint: str) -> dict | None:
+    initialize_database()
+    with db_connection() as connection:
+        row = connection.execute(
+            """
+            SELECT session_fingerprint, csrf_fingerprint, created_at, expires_at, revoked_at
+            FROM auth_sessions WHERE session_fingerprint = ?
+            """,
+            (session_fingerprint,),
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def revoke_auth_session(session_fingerprint: str, revoked_at: str) -> bool:
+    initialize_database()
+    with db_connection() as connection:
+        cursor = connection.execute(
+            """
+            UPDATE auth_sessions SET revoked_at = ?
+            WHERE session_fingerprint = ? AND revoked_at IS NULL
+            """,
+            (revoked_at, session_fingerprint),
+        )
+        return cursor.rowcount == 1
 
 
 def create_task(title: str, description: str, created_at: str, due_date: str | None = None) -> dict:
@@ -157,7 +243,6 @@ def list_security_events(limit: int = 20) -> list[dict]:
             (safe_limit,),
         ).fetchall()
         return [{**dict(row), "enabled": bool(row["enabled"])} for row in rows]
-
 
 
 def list_security_permissions() -> list[dict]:
