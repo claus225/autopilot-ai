@@ -7,7 +7,7 @@ const SENT_KEY = "autopilot-reminders-sent";
 function readSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
-    return { enabled: saved.enabled === true, time: /^([01]\\d|2[0-3]):[0-5]\\d$/.test(saved.time) ? saved.time : "08:00" };
+    return { enabled: saved.enabled === true, time: /^([01]\d|2[0-3]):[0-5]\d$/.test(saved.time) ? saved.time : "08:00" };
   } catch {
     return { enabled: false, time: "08:00" };
   }
