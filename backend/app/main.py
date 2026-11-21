@@ -11,7 +11,7 @@ from .database import create_task, list_tasks, update_task_status
 app = FastAPI(
     title="AutoPilot AI API",
     version="0.3.0",
-    description="Prototype sécurisé : organisation, échéances et aperçu de rappels, sans notification ni exécution externe.",
+    description="Prototype sécurisé : organisation, échéances et suggestions fondées sur des règles, sans exécution externe.",
 )
 
 allowed_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
@@ -77,9 +77,46 @@ def build_reminders(tasks: list[dict], today: date, days: int = 7) -> dict:
     }
 
 
+
+def build_next_action(tasks: list[dict], today: date) -> dict:
+    """Suggest one task using transparent rules; this is not an AI model."""
+    pending = [task for task in tasks if task["status"] == "todo"]
+    dated = [task for task in pending if task.get("due_date")]
+    overdue = sorted((t for t in dated if date.fromisoformat(t["due_date"]) < today), key=lambda t: (t["due_date"], t["id"]))
+    due_today = sorted((t for t in dated if date.fromisoformat(t["due_date"]) == today), key=lambda t: (t["due_date"], t["id"]))
+    upcoming = sorted((t for t in dated if date.fromisoformat(t["due_date"]) > today), key=lambda t: (t["due_date"], t["id"]))
+
+    if overdue:
+        chosen, reason, priority = overdue[0], "Cette tâche a dépassé sa date limite.", "urgent"
+    elif due_today:
+        chosen, reason, priority = due_today[0], "Cette tâche arrive à échéance aujourd'hui.", "high"
+    elif upcoming:
+        chosen, reason, priority = upcoming[0], "C'est la prochaine échéance enregistrée.", "normal"
+    elif pending:
+        chosen = sorted(pending, key=lambda t: (t["created_at"], t["id"]))[0]
+        reason, priority = "Aucune échéance proche : commence par une tâche en attente.", "normal"
+    else:
+        chosen, reason, priority = None, "Aucune tâche en attente. Tu peux en ajouter une nouvelle.", "none"
+
+    return {
+        "suggestion": chosen,
+        "priority": priority,
+        "reason": reason,
+        "method": "rules",
+        "is_ai_generated": False,
+        "execution_enabled": False,
+    }
+
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "service": "autopilot-ai-api", "version": "0.3.0"}
+
+
+@app.get("/api/assistant/next-action")
+def get_next_action():
+    """Suggest one task using simple rules; never executes it."""
+    return build_next_action(list_tasks(), date.today())
 
 
 @app.get("/api/reminders")
