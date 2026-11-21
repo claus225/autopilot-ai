@@ -1,6 +1,9 @@
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 import os
+import json
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,6 +48,25 @@ class TaskDraft(BaseModel):
 
 class TaskStatusUpdate(BaseModel):
     status: Literal["todo", "completed"]
+
+
+
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=2000)
+
+
+class ChatRequest(BaseModel):
+    messages: list[ChatTurn] = Field(min_length=1, max_length=12)
+
+    @field_validator("messages")
+    @classmethod
+    def last_message_must_be_user(cls, value: list[ChatTurn]) -> list[ChatTurn]:
+        if value[-1].role != "user":
+            raise ValueError("Le dernier message doit venir de l'utilisateur.")
+        return value
+
+
 
 
 def build_reminders(tasks: list[dict], today: date, days: int = 7) -> dict:
@@ -114,24 +136,82 @@ def health():
 
 
 
+
+def get_ollama_status() -> dict:
+    """Check only the local Ollama service and configured model."""
+    model = os.getenv("OLLAMA_MODEL", "qwen3.5:0.8b")
+    request = Request("http://127.0.0.1:11434/api/tags", headers={"Accept": "application/json"})
+    try:
+        with urlopen(request, timeout=2) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        installed = [item.get("name", "") for item in payload.get("models", [])]
+        ready = model in installed
+        return {
+            "connected": ready, "provider": "Ollama local", "model": model,
+            "mode": "local_ready" if ready else "model_missing",
+            "message": "Assistant local prêt. Les messages restent sur cet ordinateur." if ready else "Ollama fonctionne, mais le modèle " + model + " n'est pas installé.",
+            "installed_models": installed, "execution_enabled": False,
+        }
+    except (URLError, TimeoutError, OSError, ValueError):
+        return {
+            "connected": False, "provider": "Ollama local", "model": model,
+            "mode": "ollama_unavailable",
+            "message": "Ollama n'est pas démarré ou n'est pas installé sur cet ordinateur.",
+            "installed_models": [], "execution_enabled": False,
+        }
+
+
+def generate_local_reply(messages: list[dict]) -> str:
+    """Send chat text only to the Ollama service on this computer."""
+    model = os.getenv("OLLAMA_MODEL", "qwen3.5:0.8b")
+    system_message = {
+        "role": "system",
+        "content": "Tu es l’assistant d’organisation AutoPilot AI. Réponds clairement en français. Aide à comprendre, planifier et rédiger. Tu n’as aucun outil, aucun accès au système, au navigateur ou aux comptes. Ne prétends jamais avoir exécuté une action. Demande une confirmation humaine pour toute action externe.",
+    }
+    body = json.dumps({
+        "model": model,
+        "messages": [system_message, *messages],
+        "stream": False,
+        "keep_alive": "5m",
+        "options": {"num_predict": 400, "temperature": 0.5},
+    }).encode("utf-8")
+    request = Request(
+        "http://127.0.0.1:11434/api/chat",
+        data=body,
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=120) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        content = payload.get("message", {}).get("content", "").strip()
+        if not content:
+            raise HTTPException(status_code=502, detail="Le modèle local n'a pas renvoyé de réponse.")
+        return content
+    except HTTPError as error:
+        if error.code == 404:
+            raise HTTPException(status_code=503, detail="Modèle local absent. Installe le modèle indiqué dans le guide.")
+        raise HTTPException(status_code=502, detail="Le service IA local a renvoyé une erreur.")
+    except (URLError, TimeoutError, OSError, ValueError):
+        raise HTTPException(status_code=503, detail="Ollama est indisponible. Vérifie qu'il est démarré sur cet ordinateur.")
+
+
 @app.get("/api/assistant/status")
 def assistant_status():
-    """Report honestly whether an external AI provider is configured."""
-    provider = os.getenv("AI_PROVIDER", "none").strip().lower()
-    if provider == "none":
-        return {
-            "connected": False,
-            "provider": None,
-            "mode": "rules_only",
-            "message": "Aucun fournisseur IA n'est configuré. Les suggestions utilisent des règles locales.",
-            "api_key_present": False,
-        }
+    return get_ollama_status()
+
+
+@app.post("/api/assistant/chat")
+def assistant_chat(chat: ChatRequest):
+    status = get_ollama_status()
+    if not status["connected"]:
+        raise HTTPException(status_code=503, detail=status["message"])
+    messages = [turn.model_dump() for turn in chat.messages]
     return {
-        "connected": False,
-        "provider": provider,
-        "mode": "not_implemented",
-        "message": "Ce fournisseur est sélectionné mais son connecteur n'est pas encore implémenté.",
-        "api_key_present": bool(os.getenv("AI_API_KEY")),
+        "reply": generate_local_reply(messages),
+        "provider": "Ollama local",
+        "model": status["model"],
+        "execution_enabled": False,
     }
 
 
