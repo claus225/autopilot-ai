@@ -11,6 +11,7 @@ Assistant IA hybride pour préparer, organiser et planifier des tâches avec con
 - Persistance locale avec SQLite, y compris les dates limites facultatives.
 - Migration automatique de la base SQLite existante pour ajouter le champ d'échéance.
 - Endpoint de prévisualisation qui prépare une proposition sans l'exécuter.
+- Chat IA local via Ollama (nécessite l'installation d'Ollama et du modèle).
 - Tests backend et compilation frontend via GitHub Actions.
 
 ## Démarrage
@@ -39,7 +40,7 @@ Aucune action externe sans confirmation explicite. Pas de collecte de mots de pa
 - [x] Aperçu des échéances et classification des tâches à rappeler
 - [x] Tests backend et compilation frontend dans CI
 - [ ] Notifications réelles (push/e-mail) et planification en arrière-plan
-- [ ] Assistant IA connecté
+- [x] Connecteur de chat IA local (Ollama, modèle à installer sur le PC)
 - [ ] Automatisation web contrôlée
 - [ ] Agent local facultatif et isolé
 - [ ] PWA et déploiement
