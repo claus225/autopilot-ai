@@ -56,11 +56,11 @@ La compilation frontend est vérifiée automatiquement par le workflow GitHub Ac
 - Retrouver les tâches enregistrées après redémarrage grâce à SQLite.
 - Marquer une tâche comme terminée ou à faire.
 - Préparer un aperçu de tâche sans déclencher son exécution.
-- Consulter les échéances en retard, du jour et des 7 prochains jours dans le tableau de bord.
+- Consulter les échéances en retard, du jour et des 7 prochains jours dans le tableau de bord.\n- Activer des notifications locales du navigateur, avec choix de l'heure, pour les tâches dues aujourd'hui.
 - Consulter l'API en lecture seule avec `GET /api/reminders?days=7` (période autorisée : 0 à 30 jours).
 
 La base SQLite est créée localement par le backend dans `backend/data/` par défaut. Ce dossier est exclu de Git. Si une base plus ancienne existe, le backend ajoute automatiquement la colonne de date limite manquante.
 
 ## Limites et sécurité
 
-Les échéances sont classées dans un aperçu, mais aucun rappel automatique, notification push ou e-mail n'est envoyé. L'aperçu est calculé à la demande : il ne tourne pas en arrière-plan. Cette version ne comporte pas encore d'assistant IA connecté, d'automatisation du navigateur, de contrôle de l'ordinateur ni de publication sur les réseaux sociaux. Elle ne lance aucune action externe. N'ajoute aucune clé secrète dans GitHub et ne partage jamais un fichier `.env`.
+Les notifications locales nécessitent une autorisation explicite dans le navigateur et fonctionnent uniquement tant que la page reste ouverte. Elles sont vérifiées toutes les 30 secondes et ne sont émises qu'une fois par tâche et par jour. Elles ne fonctionnent pas lorsque le site est fermé : aucune notification push, tâche de fond ou e-mail n'est configuré. L'heure et l'état d'activation sont stockés dans le stockage local du navigateur. Cette version ne comporte pas encore d'assistant IA connecté, d'automatisation du navigateur, de contrôle de l'ordinateur ni de publication sur les réseaux sociaux. Elle ne lance aucune action externe. N'ajoute aucune clé secrète dans GitHub et ne partage jamais un fichier `.env`.
