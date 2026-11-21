@@ -41,3 +41,8 @@ Le registre SQLite contient cinq catégories de capacités futures : automatisat
 ## Protection de l'API locale
 
 Le middleware refuse les clients dont l'adresse n'est pas une adresse de boucle locale, limite le débit à 60 requêtes par minute et par adresse cliente, refuse les corps annoncés au-delà de 64 Ko et ajoute des en-têtes de protection. Le serveur doit être lancé explicitement sur `127.0.0.1`. La limite basée sur `Content-Length` est une défense complémentaire et ne remplace pas une limite stricte au niveau du serveur/proxy. L'API n'ayant pas encore de gestion de comptes ni d'authentification, aucun déploiement public n'est autorisé.
+
+
+## Intégration Telegram (phase initiale)
+
+La première version du connecteur lit TELEGRAM_BOT_TOKEN uniquement depuis l'environnement du serveur et appelle getMe pour vérifier le bot. Le token n'est jamais renvoyé dans l'API, l'interface ou les journaux. Cette phase est strictement en lecture seule : aucun message n'est envoyé, aucun lien n'est créé et aucun paramètre de groupe ou de canal n'est modifié. L'arrêt d'urgence suspend également cette vérification. Ne configure jamais le token dans le code source, dans GitHub ou dans une conversation.
