@@ -12,6 +12,7 @@ Assistant IA hybride pour préparer, organiser et planifier des tâches avec con
 - Migration automatique de la base SQLite existante pour ajouter le champ d'échéance.
 - Endpoint de prévisualisation qui prépare une proposition sans l'exécuter.
 - Interface de chat et connecteur IA local via Ollama (modèle à installer sur le PC ; aucun service cloud).
+- Première base de connexion Telegram en lecture seule : vérification du bot via `GET /api/telegram/status`, sans publication ni modification de groupes/canaux.
 - Centre de sécurité avec état des capacités, arrêt d’urgence persistant dans SQLite et journal d’événements limité aux métadonnées.
 - Tests backend et compilation frontend via GitHub Actions.
 
@@ -43,6 +44,7 @@ Aucune action externe sans confirmation explicite. Pas de collecte de mots de pa
 - [ ] Notifications réelles (push/e-mail) et planification en arrière-plan
 - [x] Connecteur de chat IA local (Ollama, modèle à installer sur le PC)
 - [x] Arrêt d’urgence persistant dans SQLite et journal de sécurité sans contenu de messages
+- [ ] Connexion Telegram complète : groupes/canaux autorisés, publications après confirmation, liens d’invitation et historique (seul le contrôle de connexion en lecture seule existe pour l’instant)
 - [ ] Automatisation web contrôlée
 - [ ] Agent local facultatif et isolé
 - [ ] PWA et déploiement
