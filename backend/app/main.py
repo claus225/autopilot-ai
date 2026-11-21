@@ -32,6 +32,14 @@ _rate_buckets: dict[str, deque] = defaultdict(deque)
 _rate_lock = Lock()
 
 
+def security_headers(response: JSONResponse | object):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.middleware("http")
 async def protect_api(request: FastAPIRequest, call_next):
     client_host = request.client.host if request.client else ""
@@ -39,18 +47,18 @@ async def protect_api(request: FastAPIRequest, call_next):
     is_test_client = client_host == "testclient"
     is_loopback = client_host in {"127.0.0.1", "::1", "localhost"}
     if not (is_loopback or is_test_client):
-        return JSONResponse(
+        return security_headers(JSONResponse(
             status_code=403,
             content={"detail": "API locale : les connexions distantes sont refusées."},
-        )
+        ))
 
     content_length = request.headers.get("content-length")
     if content_length:
         try:
             if int(content_length) > 65536:
-                return JSONResponse(status_code=413, content={"detail": "Requête trop volumineuse."})
+                return security_headers(JSONResponse(status_code=413, content={"detail": "Requête trop volumineuse."}))
         except ValueError:
-            return JSONResponse(status_code=400, content={"detail": "En-tête Content-Length invalide."})
+            return security_headers(JSONResponse(status_code=400, content={"detail": "En-tête Content-Length invalide."}))
 
     now = monotonic()
     with _rate_lock:
@@ -58,11 +66,11 @@ async def protect_api(request: FastAPIRequest, call_next):
         while bucket and now - bucket[0] >= _RATE_WINDOW_SECONDS:
             bucket.popleft()
         if len(bucket) >= _RATE_MAX_REQUESTS:
-            return JSONResponse(
+            return security_headers(JSONResponse(
                 status_code=429,
                 content={"detail": "Trop de requêtes. Réessaie dans une minute."},
                 headers={"Retry-After": "60"},
-            )
+            ))
         bucket.append(now)
 
     response = await call_next(request)
