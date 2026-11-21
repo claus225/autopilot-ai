@@ -155,3 +155,41 @@ def test_production_api_fails_closed_until_owner_setup(tmp_path, monkeypatch):
     assert response.status_code == 423
     assert client.get("/api/auth/status").status_code == 200
     assert client.get("/api/health").status_code == 200
+
+
+
+def test_login_throttles_after_five_attempts(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from app import auth_routes
+
+    auth_routes._login_attempts.clear()
+    monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "login-throttle.db"))
+    monkeypatch.setenv("AUTOPILOT_SETUP_TOKEN", "setup-secret-" + "t" * 40)
+    monkeypatch.setenv("AUTH_COOKIE_SECURE", "false")
+    owner = TestClient(app)
+    setup = owner.post(
+        "/api/auth/setup",
+        headers={"Origin": ORIGIN},
+        json={
+            "setup_token": "setup-secret-" + "t" * 40,
+            "password": "Mot de passe propriétaire long 2026!",
+        },
+    )
+    assert setup.status_code == 200
+
+    for _ in range(5):
+        failed = owner.post(
+            "/api/auth/login",
+            headers={"Origin": ORIGIN},
+            json={"password": "Mot de passe incorrect vraiment long"},
+        )
+        assert failed.status_code == 401
+
+    blocked = owner.post(
+        "/api/auth/login",
+        headers={"Origin": ORIGIN},
+        json={"password": "Mot de passe propriétaire long 2026!"},
+    )
+    assert blocked.status_code == 429
+    assert blocked.headers["Retry-After"] == "900"
+    auth_routes._login_attempts.clear()
