@@ -12,6 +12,7 @@ Assistant IA hybride pour préparer, organiser et planifier des tâches avec con
 - Migration automatique de la base SQLite existante pour ajouter le champ d'échéance.
 - Endpoint de prévisualisation qui prépare une proposition sans l'exécuter.
 - Interface de chat et connecteur IA local via Ollama (modèle à installer sur le PC ; aucun service cloud).
+- Centre de sécurité avec état des capacités et arrêt d’urgence qui suspend le chat IA.
 - Tests backend et compilation frontend via GitHub Actions.
 
 ## Démarrage
@@ -41,6 +42,7 @@ Aucune action externe sans confirmation explicite. Pas de collecte de mots de pa
 - [x] Tests backend et compilation frontend dans CI
 - [ ] Notifications réelles (push/e-mail) et planification en arrière-plan
 - [x] Connecteur de chat IA local (Ollama, modèle à installer sur le PC)
+- [x] Centre de sécurité et arrêt d’urgence du chat IA (état en mémoire, réinitialisé au redémarrage API)
 - [ ] Automatisation web contrôlée
 - [ ] Agent local facultatif et isolé
 - [ ] PWA et déploiement
