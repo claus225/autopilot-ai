@@ -49,6 +49,18 @@ python -m pytest
 
 La compilation frontend est vérifiée automatiquement par le workflow GitHub Actions.
 
+## Connecter l'assistant IA local (Windows)
+
+AutoPilot AI peut utiliser Ollama sur le même ordinateur, sans clé API ni compte cloud.
+
+1. Installe Ollama depuis https://ollama.com/download/windows (Windows 10 ou plus récent).
+2. Ouvre PowerShell et lance `ollama pull qwen3.5:0.8b` (téléchargement d'environ 1,2 à 1,3 Go).
+3. Vérifie le modèle avec `ollama list`.
+4. Laisse Ollama ouvert, puis démarre l'API et l'interface comme indiqué plus haut.
+5. Le tableau de bord doit indiquer « Assistant local prêt ».
+
+Le modèle par défaut peut être changé avec la variable `OLLAMA_MODEL`. Le backend contacte uniquement `127.0.0.1:11434`. Les messages de chat sont envoyés au modèle local sur cet ordinateur. Aucun outil d'exécution, accès aux fichiers, au navigateur ou aux comptes n'est fourni au modèle.
+
 ## Fonctionnalités présentes
 
 - Ajouter une tâche avec un titre et une description.
@@ -64,4 +76,4 @@ La base SQLite est créée localement par le backend dans `backend/data/` par d�
 
 ## Limites et sécurité
 
-Les notifications locales nécessitent une autorisation explicite dans le navigateur et fonctionnent uniquement tant que la page reste ouverte. Elles sont vérifiées toutes les 30 secondes et ne sont émises qu'une fois par tâche et par jour. Elles ne fonctionnent pas lorsque le site est fermé : aucune notification push, tâche de fond ou e-mail n'est configuré. L'heure et l'état d'activation sont stockés dans le stockage local du navigateur. Cette version ne comporte pas encore d'assistant IA connecté, d'automatisation du navigateur, de contrôle de l'ordinateur ni de publication sur les réseaux sociaux. Elle ne lance aucune action externe. N'ajoute aucune clé secrète dans GitHub et ne partage jamais un fichier `.env`.
+Les notifications locales nécessitent une autorisation explicite dans le navigateur et fonctionnent uniquement tant que la page reste ouverte. Elles sont vérifiées toutes les 30 secondes et ne sont émises qu'une fois par tâche et par jour. Elles ne fonctionnent pas lorsque le site est fermé : aucune notification push, tâche de fond ou e-mail n'est configuré. L'heure et l'état d'activation sont stockés dans le stockage local du navigateur. Le chat IA local nécessite qu'Ollama et le modèle soient installés et démarrés. Il n'y a pas encore d'automatisation du navigateur, de contrôle de l'ordinateur ni de publication sur les réseaux sociaux. Elle ne lance aucune action externe. N'ajoute aucune clé secrète dans GitHub et ne partage jamais un fichier `.env`.
