@@ -13,6 +13,8 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
+from .telegram import get_telegram_status
+
 from .database import (
     create_task, list_tasks, update_task_status, get_emergency_stop,
     set_emergency_stop as persist_emergency_stop, list_security_events,
@@ -209,6 +211,21 @@ def build_next_action(tasks: list[dict], today: date) -> dict:
         "is_ai_generated": False,
         "execution_enabled": False,
     }
+
+
+@app.get("/api/telegram/status")
+def telegram_status():
+    """Check Telegram bot credentials without exposing the token or sending messages."""
+    if get_emergency_stop():
+        return {
+            "configured": bool(os.getenv("TELEGRAM_BOT_TOKEN", "").strip()),
+            "connected": False,
+            "bot": None,
+            "mode": "emergency_stop",
+            "message": "Arrêt d’urgence activé : la connexion Telegram est suspendue.",
+            "sending_enabled": False,
+        }
+    return get_telegram_status()
 
 
 @app.get("/api/health")
