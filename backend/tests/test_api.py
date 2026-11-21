@@ -33,11 +33,22 @@ def test_create_and_list_tasks(tmp_path, monkeypatch):
     assert item["title"] == "Réviser"
     assert item["description"] == "Maths"
     assert item["status"] == "todo"
+    assert item["due_date"] is None
 
     listed = client.get("/api/tasks")
     assert listed.status_code == 200
     assert len(listed.json()["items"]) == 1
     assert listed.json()["items"][0]["id"] == item["id"]
+
+
+def test_task_due_date_is_saved(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "due-date.db"))
+    response = client.post(
+        "/api/tasks",
+        json={"title": "Préparer le devoir", "due_date": "2026-12-05"},
+    )
+    assert response.status_code == 200
+    assert response.json()["item"]["due_date"] == "2026-12-05"
 
 
 def test_task_can_be_marked_completed_without_execution(tmp_path, monkeypatch):
