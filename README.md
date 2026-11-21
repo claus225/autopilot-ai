@@ -2,7 +2,7 @@
 
 Assistant IA hybride pour préparer, organiser et planifier des tâches avec contrôle humain et sécurité en priorité.
 
-> **Prototype en construction :** l'application enregistre des tâches et leurs échéances. Elle ne pilote pas encore le navigateur ou l'ordinateur et n'exécute aucune action externe.
+ > **Prototype en construction :** le chat IA local est intégré au code, mais il ne répond qu'après installation et démarrage d'Ollama et du modèle sur le PC. L'application ne pilote pas encore le navigateur ou l'ordinateur et n'exécute aucune action externe.
 
 ## Fonctionnalités disponibles
 
@@ -11,12 +11,12 @@ Assistant IA hybride pour préparer, organiser et planifier des tâches avec con
 - Persistance locale avec SQLite, y compris les dates limites facultatives.
 - Migration automatique de la base SQLite existante pour ajouter le champ d'échéance.
 - Endpoint de prévisualisation qui prépare une proposition sans l'exécuter.
-- Chat IA local via Ollama (nécessite l'installation d'Ollama et du modèle).
+- Interface de chat et connecteur IA local via Ollama (modèle à installer sur le PC ; aucun service cloud).
 - Tests backend et compilation frontend via GitHub Actions.
 
 ## Démarrage
 
-Consulte [GETTING_STARTED.md](GETTING_STARTED.md) pour lancer l'API FastAPI et l'interface React/Vite sur ton ordinateur.
+Consulte [GETTING_STARTED.md](GETTING_STARTED.md) pour installer Ollama, télécharger le modèle local et lancer l'API FastAPI et l'interface React/Vite sur ton ordinateur.
 
 ## Architecture
 
