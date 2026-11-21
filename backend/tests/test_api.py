@@ -397,3 +397,40 @@ def test_telegram_status_is_suspended_by_emergency_stop(tmp_path, monkeypatch):
     assert response.json()["connected"] is False
     assert response.json()["sending_enabled"] is False
     client.post("/api/security/emergency-stop", json={"enabled": False})
+
+
+# Authentication primitives are tested before any HTTP login route is enabled.
+def test_auth_password_hash_uses_argon2_and_verifies():
+    from app.auth import hash_password, verify_password
+
+    password = "Une phrase secrète longue 2026!"
+    stored = hash_password(password)
+    assert stored.startswith("$argon2id$")
+    assert stored != password
+    assert verify_password(password, stored) is True
+    assert verify_password("mauvais mot de passe", stored) is False
+
+
+def test_auth_password_rejects_short_or_oversized_values():
+    from app.auth import hash_password
+
+    import pytest
+    with pytest.raises(ValueError):
+        hash_password("trop court")
+    with pytest.raises(ValueError):
+        hash_password("x" * 1025)
+
+
+def test_auth_session_token_is_random_and_only_fingerprint_is_stored():
+    from app.auth import create_secret_token, fingerprint_token, token_matches
+
+    first = create_secret_token()
+    second = create_secret_token()
+    fingerprint = fingerprint_token(first)
+
+    assert first != second
+    assert len(first) >= 40
+    assert first not in fingerprint
+    assert token_matches(first, fingerprint) is True
+    assert token_matches(second, fingerprint) is False
+    assert token_matches("", fingerprint) is False
