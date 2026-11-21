@@ -52,12 +52,13 @@ La compilation frontend est vérifiée automatiquement par le workflow GitHub Ac
 ## Fonctionnalités présentes
 
 - Ajouter une tâche avec un titre et une description.
+- Définir une date limite facultative.
 - Retrouver les tâches enregistrées après redémarrage grâce à SQLite.
 - Marquer une tâche comme terminée ou à faire.
 - Préparer un aperçu de tâche sans déclencher son exécution.
 
-La base SQLite est créée localement par le backend dans `backend/data/` par défaut. Ce dossier est exclu de Git.
+La base SQLite est créée localement par le backend dans `backend/data/` par défaut. Ce dossier est exclu de Git. Si une base plus ancienne existe, le backend ajoute automatiquement la colonne de date limite manquante.
 
 ## Limites et sécurité
 
-Cette version ne comporte pas encore de rappels programmés, d'assistant IA connecté, d'automatisation du navigateur, de contrôle de l'ordinateur ni de publication sur les réseaux sociaux. Elle ne lance aucune action externe. N'ajoute aucune clé secrète dans GitHub et ne partage jamais un fichier `.env`.
+La date limite est enregistrée et affichée, mais aucun rappel ni notification n'est envoyé pour le moment. Cette version ne comporte pas encore d'assistant IA connecté, d'automatisation du navigateur, de contrôle de l'ordinateur ni de publication sur les réseaux sociaux. Elle ne lance aucune action externe. N'ajoute aucune clé secrète dans GitHub et ne partage jamais un fichier `.env`.
