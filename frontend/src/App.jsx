@@ -31,6 +31,8 @@ export default function App() {
   const [chatBusy, setChatBusy] = useState(false);
   const [securityStatus, setSecurityStatus] = useState(null);
   const [securityBusy, setSecurityBusy] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(false);
 
   async function loadTasks() {
     try {
@@ -54,6 +56,35 @@ export default function App() {
   }
 
   useEffect(() => { loadTasks(); }, []);
+
+  useEffect(() => {
+    const standalone = window.matchMedia?.("(display-mode: standalone)").matches
+      || window.navigator.standalone === true;
+    setIsInstalled(standalone);
+
+    const handleInstallPrompt = event => {
+      event.preventDefault();
+      setInstallPrompt(event);
+    };
+    const handleInstalled = () => {
+      setIsInstalled(true);
+      setInstallPrompt(null);
+    };
+
+    window.addEventListener("beforeinstallprompt", handleInstallPrompt);
+    window.addEventListener("appinstalled", handleInstalled);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleInstallPrompt);
+      window.removeEventListener("appinstalled", handleInstalled);
+    };
+  }, []);
+
+  async function installApp() {
+    if (!installPrompt) return;
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  }
 
   useEffect(() => {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(notificationSettings)); } catch { /* storage may be unavailable */ }
@@ -211,7 +242,13 @@ export default function App() {
       <header className="topbar">
         <span className="mark">A</span>
         <span>AutoPilot AI</span>
-        <span className="status">Prototype v0.5</span>
+        {isInstalled ? (
+          <span className="status">Application installée</span>
+        ) : installPrompt ? (
+          <button className="install-button" type="button" onClick={installApp}>Installer</button>
+        ) : (
+          <span className="status">Prototype v0.5</span>
+        )}
       </header>
 
       <section className="hero">
