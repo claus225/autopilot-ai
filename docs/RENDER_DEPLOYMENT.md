@@ -1,33 +1,44 @@
 # Préparation au déploiement Render
 
-## Décision de sécurité
+## Décision actuelle
 
-Le dépôt n'est pas prêt à recevoir un déploiement public du backend. Ne crée pas encore de service Render et ne renseigne aucun secret Telegram.
+Le backend n'est pas prêt pour un déploiement public. Ne crée pas encore de service Render et ne renseigne aucun secret Telegram.
 
-Le middleware actuel de `backend/app/main.py` refuse volontairement toutes les connexions qui ne viennent pas de la boucle locale. Cette protection doit rester active tant qu'une vraie authentification côté serveur n'est pas implémentée et testée. Il ne faut pas simplement supprimer cette vérification pour faire fonctionner Render.
+L'authentification propriétaire et la protection CSRF sont maintenant intégrées dans le code :
+- création unique du compte par secret d'initialisation ;
+- connexion par mot de passe Argon2id ;
+- sessions sécurisées, expirables et révocables ;
+- protection des routes métier après configuration du compte ;
+- écran frontend de configuration/connexion ;
+- verrouillage des routes métier en production avant la création du compte.
 
-## Conditions obligatoires avant un backend public
+Le garde-fou loopback reste volontairement actif. Il ne faut pas le supprimer pour « faire marcher » Render.
 
-- Authentification serveur avec sessions sécurisées (cookies HttpOnly, Secure et SameSite adaptés à l'architecture), expiration et déconnexion.
-- Protection CSRF et vérification stricte de l'origine autorisée.
-- Limitation de débit adaptée à un déploiement multi-instance, et limite de taille réelle des corps de requête au niveau ASGI/proxy.
-- CORS limité à l'origine exacte du frontend.
-- Stockage persistant adapté à l'hébergement : SQLite sur le système de fichiers éphémère d'un service gratuit Render n'est pas une base durable. Évaluer PostgreSQL et ses limites de gratuité avant de choisir.
-- Tests d'accès anonyme refusé, session valide acceptée, session expirée refusée, origine/CSRF invalide refusé, arrêt d'urgence et absence de fuite de secrets.
-- Vérifier la disponibilité et les limites du plan Render au moment du déploiement.
+## Bloqueurs avant backend public
 
-## Plan de déploiement prudent
+- Remplacer ou compléter SQLite local par une base persistante adaptée à l'hébergement et aux sauvegardes.
+- Adapter le limiteur de débit actuellement en mémoire et par processus à un environnement multi-instance.
+- Ajouter une limite effective de corps de requête au niveau ASGI/proxy, y compris pour les requêtes chunked.
+- Concevoir une architecture de même site ou un proxy de même origine pour les cookies `SameSite=Strict`, puis valider CORS avec credentials et HTTPS.
+- Tester le parcours complet de configuration initiale, connexion, expiration, déconnexion, CSRF et accès anonymes sur un environnement de préproduction.
+- Confirmer les limites réelles du plan Render au moment du déploiement.
+- Déployer sans token Telegram et sans action externe dans un premier temps.
 
-1. Garder l'API locale et le token Telegram non configuré.
-2. Implémenter et tester l'authentification et la protection CSRF.
-3. Choisir une base persistante sans supposer qu'un stockage gratuit est permanent.
-4. Déployer d'abord un environnement de test sans token Telegram ni actions externes.
-5. Vérifier les journaux, les sauvegardes et les contrôles d'accès.
-6. Ajouter le token Telegram uniquement dans les variables secrètes du service backend, après validation de la connexion et des droits du bot.
+## Plan prudent
+
+1. Conserver le backend local et Telegram en lecture seule.
+2. Choisir la base persistante et définir les sauvegardes.
+3. Adapter les protections réseau, le débit et la taille des corps de requête.
+4. Préparer un frontend/API même-site et tester les cookies HTTPS.
+5. Déployer un environnement de test sans actions externes.
+6. Réaliser l'audit de sécurité autorisé.
+7. Ajouter le token Telegram uniquement comme secret privé du backend, après validation des droits du bot.
 
 ## État actuel
 
-- Préparation documentaire : en cours.
-- Backend public : bloqué volontairement par les contrôles de sécurité locaux.
-- Telegram : vérification en lecture seule uniquement ; aucune publication ni création de lien.
-- Déploiement Render : non effectué.
+- Authentification propriétaire et protection CSRF : intégrées au code, tests CI locaux.
+- Protection loopback : toujours active.
+- Base de données persistante hébergée : non configurée.
+- Backend public : non déployé.
+- Telegram : contrôle de connexion en lecture seule uniquement.
+- Service Render : non créé.
