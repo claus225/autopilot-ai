@@ -132,3 +132,22 @@ def test_next_action_handles_empty_task_list():
     result = build_next_action([], date(2026, 11, 21))
     assert result["suggestion"] is None
     assert result["priority"] == "none"
+
+
+def test_assistant_status_defaults_to_rules_only(monkeypatch):
+    monkeypatch.delenv("AI_PROVIDER", raising=False)
+    monkeypatch.delenv("AI_API_KEY", raising=False)
+    response = client.get("/api/assistant/status")
+    assert response.status_code == 200
+    assert response.json()["connected"] is False
+    assert response.json()["mode"] == "rules_only"
+    assert response.json()["api_key_present"] is False
+
+
+def test_assistant_status_never_claims_unimplemented_provider_is_connected(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "example")
+    monkeypatch.setenv("AI_API_KEY", "test-placeholder")
+    response = client.get("/api/assistant/status")
+    assert response.status_code == 200
+    assert response.json()["connected"] is False
+    assert response.json()["mode"] == "not_implemented"
