@@ -284,6 +284,12 @@ export default function App() {
           <li><span>Automatisation du navigateur</span><strong>Désactivée</strong></li>
           <li><span>Agent de contrôle du PC</span><strong>Désactivé</strong></li>
           <li><span>Chat IA</span><strong>{securityStatus?.chat_available ? "Disponible si Ollama est prêt" : "Suspendu"}</strong></li>
+          {(securityStatus?.permissions || []).map(permission => (
+            <li key={permission.permission_key}>
+              <span>{permission.label}</span>
+              <strong>{permission.enabled ? "Autorisée" : "Bloquée par défaut"}</strong>
+            </li>
+          ))}
         </ul>
         <button
           type="button"
