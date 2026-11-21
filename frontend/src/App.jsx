@@ -60,15 +60,15 @@ export default function App() {
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
       setTasks(data.items);
-      const telegramResponse = await fetch(`${API}/api/telegram/status`);
+      const telegramResponse = await apiFetch(`/api/telegram/status`);
       if (telegramResponse.ok) setTelegramStatus(await telegramResponse.json());
-      const securityResponse = await fetch(`${API}/api/security/status`);
+      const securityResponse = await apiFetch(`/api/security/status`);
       if (securityResponse.ok) setSecurityStatus(await securityResponse.json());
-      const statusResponse = await fetch(`${API}/api/assistant/status`);
+      const statusResponse = await apiFetch(`/api/assistant/status`);
       if (statusResponse.ok) setAssistantStatus(await statusResponse.json());
-      const suggestionResponse = await fetch(`${API}/api/assistant/next-action`);
+      const suggestionResponse = await apiFetch(`/api/assistant/next-action`);
       if (suggestionResponse.ok) setNextAction(await suggestionResponse.json());
-      const reminderResponse = await fetch(`${API}/api/reminders?days=7`);
+      const reminderResponse = await apiFetch(`/api/reminders?days=7`);
       if (reminderResponse.ok) setReminders(await reminderResponse.json());
     } catch {
       setNotice("Impossible de charger l'historique. Vérifie que l'API est démarrée.");
@@ -204,7 +204,7 @@ export default function App() {
     setChatInput("");
     setChatBusy(true);
     try {
-      const response = await fetch(`${API}/api/assistant/chat`, {
+      const response = await apiFetch(`/api/assistant/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: nextMessages.slice(-10) }),
@@ -223,7 +223,7 @@ export default function App() {
     if (securityBusy) return;
     setSecurityBusy(true);
     try {
-      const response = await fetch(`${API}/api/security/emergency-stop`, {
+      const response = await apiFetch(`/api/security/emergency-stop`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: !securityStatus?.emergency_stop_enabled }),
@@ -248,7 +248,7 @@ export default function App() {
     setBusy(true);
     setNotice("");
     try {
-      const response = await fetch(`${API}/api/tasks`, {
+      const response = await apiFetch(`/api/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title, description, due_date: dueDate || null }),
@@ -256,7 +256,7 @@ export default function App() {
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
       setTasks(current => [data.item, ...current]);
-      const suggestionResponse = await fetch(`${API}/api/assistant/next-action`);
+      const suggestionResponse = await apiFetch(`/api/assistant/next-action`);
       if (suggestionResponse.ok) setNextAction(await suggestionResponse.json());
       setTitle("");
       setDescription("");
@@ -272,7 +272,7 @@ export default function App() {
   async function toggleTask(task) {
     const nextStatus = task.status === "completed" ? "todo" : "completed";
     try {
-      const response = await fetch(`${API}/api/tasks/${task.id}/status`, {
+      const response = await apiFetch(`/api/tasks/${task.id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: nextStatus }),
@@ -280,7 +280,7 @@ export default function App() {
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
       setTasks(current => current.map(item => item.id === task.id ? data.item : item));
-      const suggestionResponse = await fetch(`${API}/api/assistant/next-action`);
+      const suggestionResponse = await apiFetch(`/api/assistant/next-action`);
       if (suggestionResponse.ok) setNextAction(await suggestionResponse.json());
       setNotice(data.message);
     } catch {
