@@ -5,6 +5,9 @@ The API remains local-only until the separate deployment security checklist is m
 import hmac
 import os
 from datetime import datetime, timezone
+from collections import defaultdict, deque
+from threading import Lock
+from time import monotonic
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import JSONResponse
@@ -22,6 +25,35 @@ from .database import create_owner_account, get_owner_account
 router = APIRouter(prefix="/api/auth", tags=["authentication"])
 SESSION_COOKIE = "autopilot_session"
 CSRF_COOKIE = "autopilot_csrf"
+
+# In-process defense in depth; hosting still needs a shared proxy limiter.
+_LOGIN_WINDOW_SECONDS = 15 * 60
+_LOGIN_MAX_ATTEMPTS = 5
+_login_attempts: dict[str, deque] = defaultdict(deque)
+_login_lock = Lock()
+
+
+def _consume_login_attempt(client_ip: str) -> bool:
+    now = monotonic()
+    key = client_ip or "unknown"
+    with _login_lock:
+        bucket = _login_attempts[key]
+        while bucket and now - bucket[0] >= _LOGIN_WINDOW_SECONDS:
+            bucket.popleft()
+        if len(bucket) >= _LOGIN_MAX_ATTEMPTS:
+            return False
+        bucket.append(now)
+        if len(_login_attempts) > 1024:
+            stale = [ip for ip, attempts in _login_attempts.items()
+                     if not attempts or now - attempts[-1] >= _LOGIN_WINDOW_SECONDS]
+            for ip in stale:
+                _login_attempts.pop(ip, None)
+        return True
+
+
+def _clear_login_attempts(client_ip: str) -> None:
+    with _login_lock:
+        _login_attempts.pop(client_ip or "unknown", None)
 
 
 class SetupRequest(BaseModel):
@@ -99,9 +131,17 @@ def setup_owner(payload: SetupRequest, request: Request):
 def login(payload: LoginRequest, request: Request):
     if not _origin_is_allowed(request):
         raise HTTPException(status_code=403, detail="Origine refusée.")
+    client_ip = request.client.host if request.client else "unknown"
+    if not _consume_login_attempt(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Trop de tentatives de connexion. Réessaie dans 15 minutes.",
+            headers={"Retry-After": "900"},
+        )
     owner = get_owner_account()
     if owner is None or not verify_password(payload.password, owner["password_hash"]):
         raise HTTPException(status_code=401, detail="Identifiants incorrects.")
+    _clear_login_attempts(client_ip)
     session, csrf, expires = create_owner_session()
     response = JSONResponse({"authenticated": True, "expires_at": expires.isoformat()})
     _set_session_cookies(response, session, csrf, expires)
