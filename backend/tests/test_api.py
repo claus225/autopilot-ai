@@ -134,32 +134,50 @@ def test_next_action_handles_empty_task_list():
     assert result["priority"] == "none"
 
 
-def test_assistant_status_defaults_to_rules_only(monkeypatch):
-    monkeypatch.delenv("AI_PROVIDER", raising=False)
-    monkeypatch.delenv("AI_API_KEY", raising=False)
-    response = client.get("/api/assistant/status")
-    assert response.status_code == 200
-    assert response.json()["connected"] is False
-    assert response.json()["mode"] == "rules_only"
-    assert response.json()["api_key_present"] is False
+
+def test_local_assistant_status_reports_missing_model(monkeypatch):
+    from app.main import get_ollama_status
+    import json
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps({"models": [{"name": "autre-modele:latest"}]}).encode("utf-8")
+
+    monkeypatch.setattr("app.main.urlopen", lambda *args, **kwargs: FakeResponse())
+    monkeypatch.setenv("OLLAMA_MODEL", "qwen3.5:0.8b")
+    result = get_ollama_status()
+    assert result["connected"] is False
+    assert result["mode"] == "model_missing"
+    assert result["model"] == "qwen3.5:0.8b"
+    assert result["execution_enabled"] is False
 
 
-def test_assistant_status_never_claims_unimplemented_provider_is_connected(monkeypatch):
-    monkeypatch.setenv("AI_PROVIDER", "example")
-    monkeypatch.setenv("AI_API_KEY", "test-placeholder")
-    response = client.get("/api/assistant/status")
-    assert response.status_code == 200
-    assert response.json()["connected"] is False
-    assert response.json()["mode"] == "not_implemented"
+def test_local_assistant_status_reports_ready_model(monkeypatch):
+    from app.main import get_ollama_status
+    import json
 
+    class FakeResponse:
+        def __enter__(self):
+            return self
 
-def test_assistant_status_endpoint_reports_rules_mode(monkeypatch):
-    monkeypatch.delenv("AI_PROVIDER", raising=False)
-    response = client.get("/api/assistant/status")
-    assert response.status_code == 200
-    assert response.json()["mode"] == "rules_only"
-    assert response.json()["connected"] is False
+        def __exit__(self, *args):
+            return False
 
+        def read(self):
+            return json.dumps({"models": [{"name": "qwen3.5:0.8b"}]}).encode("utf-8")
+
+    monkeypatch.setattr("app.main.urlopen", lambda *args, **kwargs: FakeResponse())
+    monkeypatch.setenv("OLLAMA_MODEL", "qwen3.5:0.8b")
+    result = get_ollama_status()
+    assert result["connected"] is True
+    assert result["mode"] == "local_ready"
+    assert result["execution_enabled"] is False
 
 def test_next_action_endpoint_is_read_only(monkeypatch):
     monkeypatch.setattr("app.main.list_tasks", lambda: [])
