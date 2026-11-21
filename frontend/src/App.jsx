@@ -30,6 +30,7 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const [chatBusy, setChatBusy] = useState(false);
   const [securityStatus, setSecurityStatus] = useState(null);
+  const [telegramStatus, setTelegramStatus] = useState(null);
   const [securityBusy, setSecurityBusy] = useState(false);
   const [installPrompt, setInstallPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -40,6 +41,8 @@ export default function App() {
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
       setTasks(data.items);
+      const telegramResponse = await fetch(`${API}/api/telegram/status`);
+      if (telegramResponse.ok) setTelegramStatus(await telegramResponse.json());
       const securityResponse = await fetch(`${API}/api/security/status`);
       if (securityResponse.ok) setSecurityStatus(await securityResponse.json());
       const statusResponse = await fetch(`${API}/api/assistant/status`);
@@ -342,6 +345,20 @@ export default function App() {
         <p className="reminder-note">L'arrêt d'urgence suspend le chat IA côté serveur et les notifications locales dans cette interface. Les notes et tâches déjà enregistrées restent intactes. Le réglage est enregistré dans SQLite et reste actif après un redémarrage de l'API.</p>
       </section>
 
+
+      <section className="panel telegram-panel" aria-live="polite">
+        <div className="section-heading"><h2>Connexion Telegram</h2><span>{telegramStatus?.connected ? "Connecté" : "À configurer"}</span></div>
+        <p className="reminder-note">Bot indiqué : <strong>@Tchek_bot</strong>. Cette identité est celle que tu as communiquée ; elle n'est pas encore vérifiée par Telegram.</p>
+        <p>{telegramStatus?.message || "Vérification de la configuration Telegram…"}</p>
+        {telegramStatus?.bot?.username && <p className="reminder-note">Bot vérifié : @{telegramStatus.bot.username}</p>}
+        <ul className="security-list">
+          <li><span>Vérification du bot</span><strong>{telegramStatus?.connected ? "Réussie" : "En attente"}</strong></li>
+          <li><span>Publication dans les canaux</span><strong>Désactivée</strong></li>
+          <li><span>Envoi d'images et vidéos</span><strong>Désactivé</strong></li>
+          <li><span>Création de liens</span><strong>Désactivée</strong></li>
+        </ul>
+        <p className="reminder-note">Pour connecter le bot, le propriétaire du serveur doit ajouter TELEGRAM_BOT_TOKEN dans les variables secrètes du backend. Ne colle jamais ce token dans cette page, dans GitHub ou dans une conversation. Les fonctions de publication seront ajoutées après vérification et avec confirmation humaine.</p>
+      </section>
 
       <section className="assistant-status-panel" aria-live="polite">
         <strong>{assistantStatus?.connected ? "Moteur IA connecté" : "Moteur IA non connecté"}</strong>
