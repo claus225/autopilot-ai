@@ -25,6 +25,7 @@ export default function App() {
   const [notificationSettings, setNotificationSettings] = useState(readSettings);
   const [notificationStatus, setNotificationStatus] = useState("");
   const [nextAction, setNextAction] = useState(null);
+  const [assistantStatus, setAssistantStatus] = useState(null);
 
   async function loadTasks() {
     try {
@@ -32,6 +33,8 @@ export default function App() {
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
       setTasks(data.items);
+      const statusResponse = await fetch(`${API}/api/assistant/status`);
+      if (statusResponse.ok) setAssistantStatus(await statusResponse.json());
       const suggestionResponse = await fetch(`${API}/api/assistant/next-action`);
       if (suggestionResponse.ok) setNextAction(await suggestionResponse.json());
       const reminderResponse = await fetch(`${API}/api/reminders?days=7`);
@@ -212,6 +215,12 @@ export default function App() {
         <p className="reminder-note">Limite : les notifications fonctionnent uniquement si le site est ouvert et si le navigateur les autorise. Elles ne sont pas envoyées lorsque l'application est fermée.</p>
       </section>
 
+
+
+      <section className="assistant-status-panel" aria-live="polite">
+        <strong>{assistantStatus?.connected ? "Moteur IA connecté" : "Moteur IA non connecté"}</strong>
+        <p>{assistantStatus?.message || "Vérification de la configuration IA…"}</p>
+      </section>
 
       <section className="assistant-panel" aria-live="polite">
         <div className="section-heading"><h2>Assistant de priorité</h2><span>Conseil automatique</span></div>
