@@ -113,6 +113,28 @@ def health():
     return {"status": "ok", "service": "autopilot-ai-api", "version": "0.3.0"}
 
 
+
+@app.get("/api/assistant/status")
+def assistant_status():
+    """Report honestly whether an external AI provider is configured."""
+    provider = os.getenv("AI_PROVIDER", "none").strip().lower()
+    if provider == "none":
+        return {
+            "connected": False,
+            "provider": None,
+            "mode": "rules_only",
+            "message": "Aucun fournisseur IA n'est configuré. Les suggestions utilisent des règles locales.",
+            "api_key_present": False,
+        }
+    return {
+        "connected": False,
+        "provider": provider,
+        "mode": "not_implemented",
+        "message": "Ce fournisseur est sélectionné mais son connecteur n'est pas encore implémenté.",
+        "api_key_present": bool(os.getenv("AI_API_KEY")),
+    }
+
+
 @app.get("/api/assistant/next-action")
 def get_next_action():
     """Suggest one task using simple rules; never executes it."""
