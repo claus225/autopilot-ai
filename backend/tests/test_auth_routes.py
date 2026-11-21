@@ -103,10 +103,6 @@ def test_private_api_routes_require_owner_session_and_csrf(tmp_path, monkeypatch
     monkeypatch.setenv("AUTOPILOT_SETUP_TOKEN", "setup-secret-" + "z" * 40)
     monkeypatch.setenv("AUTH_COOKIE_SECURE", "false")
 
-    anonymous = TestClient(app)
-    assert anonymous.get("/api/tasks").status_code == 401
-    assert anonymous.post("/api/tasks", json={"title": "Sans session"}).status_code == 401
-
     owner = TestClient(app)
     setup = owner.post(
         "/api/auth/setup",
@@ -117,6 +113,10 @@ def test_private_api_routes_require_owner_session_and_csrf(tmp_path, monkeypatch
         },
     )
     assert setup.status_code == 200
+
+    anonymous = TestClient(app)
+    assert anonymous.get("/api/tasks").status_code == 401
+    assert anonymous.post("/api/tasks", json={"title": "Sans session"}).status_code == 401
 
     # Read-only private routes require a session.
     assert owner.get("/api/tasks").status_code == 200
