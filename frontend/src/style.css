@@ -66,3 +66,11 @@ footer { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; marg
 .chat-bubble p { margin: 7px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: #e2e8f0; font-size: 13px; line-height: 1.6; }
 .chat-form { display: grid; gap: 10px; margin-top: 14px; }
 .chat-form button { margin-top: 0; }
+
+
+.security-panel { margin-top: 22px; padding: 20px; border: 1px solid #52617a; border-radius: 16px; background: #151d2d; }
+.security-list { display: grid; gap: 9px; margin: 16px 0; padding: 0; list-style: none; }
+.security-list li { display: flex; justify-content: space-between; gap: 14px; padding: 11px 12px; border: 1px solid #34415e; border-radius: 10px; color: #b8c5d9; font-size: 12px; }
+.security-list strong { color: #d9e4f6; text-align: right; }
+.danger-button { background: #f3d6d6; color: #5d1717; }
+.security-panel .secondary-button { border: 1px solid #8294b2; background: transparent; color: #f8fafc; }
