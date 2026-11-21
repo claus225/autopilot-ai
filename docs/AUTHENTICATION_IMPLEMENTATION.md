@@ -15,7 +15,7 @@ Une fois le compte propriétaire créé, les routes tâches, assistant, sécurit
 
 En environnement `APP_ENV=production`, l'API se verrouille aussi si le compte propriétaire n'a pas encore été créé. Elle ne laisse accessibles que la santé, le statut d'authentification et la route de configuration initiale. Un secret de configuration présent déclenche également ce verrouillage en attendant la création du compte.
 
-Les sessions expirent après 12 heures par défaut et ne peuvent pas dépasser 24 heures. Seules les empreintes des jetons sont stockées.
+Les sessions expirent après 12 heures par défaut et ne peuvent pas dépasser 24 heures. Seules les empreintes des jetons sont stockées. La connexion limite aussi les tentatives à cinq par adresse cliente sur une fenêtre glissante de 15 minutes (limiteur en mémoire, défense complémentaire).
 
 ## Configuration
 
