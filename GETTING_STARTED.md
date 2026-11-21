@@ -15,7 +15,7 @@ cd backend
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 127.0.0.1
 ```
 
 Si PowerShell bloque l'activation, utilise directement :
@@ -77,3 +77,8 @@ La base SQLite est créée localement par le backend dans `backend/data/` par d�
 ## Limites et sécurité
 
 Les notifications locales nécessitent une autorisation explicite dans le navigateur et fonctionnent uniquement tant que la page reste ouverte. Elles sont vérifiées toutes les 30 secondes et ne sont émises qu'une fois par tâche et par jour. Elles ne fonctionnent pas lorsque le site est fermé : aucune notification push, tâche de fond ou e-mail n'est configuré. L'heure et l'état d'activation sont stockés dans le stockage local du navigateur. Le chat IA local nécessite qu'Ollama et le modèle soient installés et démarrés. Il n'y a pas encore d'automatisation du navigateur, de contrôle de l'ordinateur ni de publication sur les réseaux sociaux. Elle ne lance aucune action externe. N'ajoute aucune clé secrète dans GitHub et ne partage jamais un fichier `.env`.
+
+
+## Protection locale de l'API
+
+Le serveur doit être démarré avec `--host 127.0.0.1` : l'API refuse les connexions dont l'adresse cliente n'est pas locale. Une limite simple de 60 requêtes par minute et par adresse locale, une taille maximale de corps de requête annoncée de 64 Ko et des en-têtes HTTP de protection sont également appliqués. Ces protections réduisent les risques pour un usage de développement local, mais ne remplacent pas une authentification robuste pour un déploiement multi-utilisateur ou public. Ne publie pas ce serveur sur Internet.
