@@ -151,3 +151,21 @@ def test_assistant_status_never_claims_unimplemented_provider_is_connected(monke
     assert response.status_code == 200
     assert response.json()["connected"] is False
     assert response.json()["mode"] == "not_implemented"
+
+
+def test_assistant_status_endpoint_reports_rules_mode(monkeypatch):
+    monkeypatch.delenv("AI_PROVIDER", raising=False)
+    response = client.get("/api/assistant/status")
+    assert response.status_code == 200
+    assert response.json()["mode"] == "rules_only"
+    assert response.json()["connected"] is False
+
+
+def test_next_action_endpoint_is_read_only(monkeypatch):
+    monkeypatch.setattr("app.main.list_tasks", lambda: [])
+    response = client.get("/api/assistant/next-action")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["suggestion"] is None
+    assert body["execution_enabled"] is False
+    assert body["is_ai_generated"] is False
