@@ -74,3 +74,15 @@ footer { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; marg
 .security-list strong { color: #d9e4f6; text-align: right; }
 .danger-button { background: #f3d6d6; color: #5d1717; }
 .security-panel .secondary-button { border: 1px solid #8294b2; background: transparent; color: #f8fafc; }
+
+
+/* Compact install action in the mobile header. */
+.topbar .install-button { margin: 0 0 0 auto; padding: 9px 13px; border-radius: 999px; font-size: 12px; }
+@media (max-width: 380px) {
+  .shell { width: calc(100% - 24px); }
+  .topbar { gap: 8px; font-size: 14px; }
+  .status { padding: 5px 8px; font-size: 10px; }
+  .topbar .install-button { padding: 8px 10px; font-size: 11px; }
+  .reminder-counts { gap: 6px; }
+  .reminder-counts div { padding: 10px 8px; }
+}
