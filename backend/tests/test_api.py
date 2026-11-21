@@ -231,10 +231,8 @@ def test_local_assistant_chat_returns_503_when_model_is_not_ready(monkeypatch):
 
 
 
-def test_security_status_defaults_to_protected_mode():
-    from app import main
-
-    main._emergency_stop_enabled = False
+def test_security_status_defaults_to_protected_mode(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "security-default.db"))
     response = client.get("/api/security/status")
     assert response.status_code == 200
     body = response.json()
@@ -245,10 +243,8 @@ def test_security_status_defaults_to_protected_mode():
     assert body["chat_available"] is True
 
 
-def test_emergency_stop_blocks_local_assistant_chat(monkeypatch):
-    from app import main
-
-    main._emergency_stop_enabled = False
+def test_emergency_stop_blocks_local_assistant_chat(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "security-stop.db"))
     response = client.post("/api/security/emergency-stop", json={"enabled": True})
     assert response.status_code == 200
     assert response.json()["emergency_stop_enabled"] is True
@@ -259,8 +255,26 @@ def test_emergency_stop_blocks_local_assistant_chat(monkeypatch):
     assert chat.status_code == 423
     assert "Arrêt d’urgence activé" in chat.json()["detail"]
 
-    main._emergency_stop_enabled = False
+    response = client.post("/api/security/emergency-stop", json={"enabled": False})
+    assert response.status_code == 200
     monkeypatch.setattr("app.main.get_ollama_status", lambda: {
         "connected": False, "model": "qwen3.5:0.8b", "message": "Ollama indisponible"
     })
     assert client.get("/api/security/status").json()["chat_available"] is True
+
+
+def test_emergency_stop_persists_and_creates_metadata_audit_event(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "security-persist.db"))
+    enabled = client.post("/api/security/emergency-stop", json={"enabled": True})
+    assert enabled.status_code == 200
+    assert client.get("/api/security/status").json()["emergency_stop_enabled"] is True
+
+    events = client.get("/api/security/events")
+    assert events.status_code == 200
+    assert events.json()["items"][0]["event_type"] == "emergency_stop_changed"
+    assert events.json()["items"][0]["enabled"] is True
+    assert "content" not in events.json()["items"][0]
+
+
+def test_security_events_limit_is_validated():
+    assert client.get("/api/security/events?limit=51").status_code == 422
