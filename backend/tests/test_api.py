@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
-from app.main import app
+from datetime import date
+
+from app.main import app, build_reminders
 
 client = TestClient(app)
 
@@ -74,3 +76,35 @@ def test_unknown_task_returns_404(tmp_path, monkeypatch):
 def test_blank_task_title_is_rejected():
     response = client.post("/api/tasks", json={"title": "   "})
     assert response.status_code == 422
+
+
+
+def test_reminder_overview_classifies_pending_tasks():
+    tasks = [
+        {"id": 1, "title": "En retard", "status": "todo", "due_date": "2026-11-20"},
+        {"id": 2, "title": "Aujourd'hui", "status": "todo", "due_date": "2026-11-21"},
+        {"id": 3, "title": "À venir", "status": "todo", "due_date": "2026-11-24"},
+        {"id": 4, "title": "Terminée", "status": "completed", "due_date": "2026-11-21"},
+        {"id": 5, "title": "Plus tard", "status": "todo", "due_date": "2026-12-15"},
+        {"id": 6, "title": "Sans échéance", "status": "todo", "due_date": None},
+    ]
+    result = build_reminders(tasks, date(2026, 11, 21), days=7)
+    assert result["counts"] == {"overdue": 1, "today": 1, "upcoming": 1}
+    assert [item["id"] for item in result["items"]] == [1, 2, 3]
+    assert result["notifications_sent"] is False
+
+
+def test_reminder_endpoint_returns_preview_only(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "reminders.db"))
+    client.post(
+        "/api/tasks",
+        json={"title": "Échéance aujourd'hui", "due_date": date.today().isoformat()},
+    )
+    response = client.get("/api/reminders")
+    assert response.status_code == 200
+    assert response.json()["counts"]["today"] == 1
+    assert response.json()["notifications_sent"] is False
+
+
+def test_reminder_window_is_limited():
+    assert client.get("/api/reminders?days=31").status_code == 422
