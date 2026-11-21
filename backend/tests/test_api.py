@@ -434,3 +434,18 @@ def test_auth_session_token_is_random_and_only_fingerprint_is_stored():
     assert token_matches(first, fingerprint) is True
     assert token_matches(second, fingerprint) is False
     assert token_matches("", fingerprint) is False
+
+
+def test_cors_allows_configured_frontend_with_credentials_and_csrf_header():
+    response = client.options(
+        "/api/tasks",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-csrf-token",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
+    assert response.headers.get("access-control-allow-credentials") == "true"
+    assert "x-csrf-token" in response.headers.get("access-control-allow-headers", "").lower()
