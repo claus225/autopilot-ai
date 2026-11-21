@@ -44,6 +44,24 @@ def initialize_database() -> None:
         }
         if "due_date" not in columns:
             connection.execute("ALTER TABLE tasks ADD COLUMN due_date TEXT")
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS security_settings (
+                setting_key TEXT PRIMARY KEY,
+                setting_value TEXT NOT NULL
+            )
+        """)
+        connection.execute("""
+            INSERT OR IGNORE INTO security_settings (setting_key, setting_value)
+            VALUES ('emergency_stop_enabled', 'false')
+        """)
+        connection.execute("""
+            CREATE TABLE IF NOT EXISTS security_events (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                event_type TEXT NOT NULL,
+                enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+                created_at TEXT NOT NULL
+            )
+        """)
 
 
 def create_task(title: str, description: str, created_at: str, due_date: str | None = None) -> dict:
@@ -83,3 +101,42 @@ def update_task_status(task_id: int, status: str) -> dict | None:
             (task_id,),
         ).fetchone()
         return dict(row)
+
+
+def get_emergency_stop() -> bool:
+    initialize_database()
+    with db_connection() as connection:
+        row = connection.execute(
+            "SELECT setting_value FROM security_settings WHERE setting_key = 'emergency_stop_enabled'"
+        ).fetchone()
+        return bool(row and row["setting_value"] == "true")
+
+
+def set_emergency_stop(enabled: bool) -> None:
+    from datetime import datetime, timezone
+
+    initialize_database()
+    with db_connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO security_settings (setting_key, setting_value)
+            VALUES ('emergency_stop_enabled', ?)
+            ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
+            """,
+            ("true" if enabled else "false",),
+        )
+        connection.execute(
+            "INSERT INTO security_events (event_type, enabled, created_at) VALUES (?, ?, ?)",
+            ("emergency_stop_changed", int(enabled), datetime.now(timezone.utc).isoformat()),
+        )
+
+
+def list_security_events(limit: int = 20) -> list[dict]:
+    initialize_database()
+    safe_limit = max(1, min(limit, 50))
+    with db_connection() as connection:
+        rows = connection.execute(
+            "SELECT id, event_type, enabled, created_at FROM security_events ORDER BY id DESC LIMIT ?",
+            (safe_limit,),
+        ).fetchall()
+        return [{**dict(row), "enabled": bool(row["enabled"])} for row in rows]
