@@ -53,3 +53,7 @@ footer { display: flex; flex-wrap: wrap; gap: 9px; justify-content: center; marg
 
 .assistant-panel { margin-top: 22px; padding: 20px; border: 1px solid #465b80; border-radius: 16px; background: #15213a; }
 .assistant-priority { margin: 14px 0 6px; color: #c4d5f4; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .8px; }
+
+.assistant-status-panel { margin-top: 22px; padding: 15px 18px; border: 1px solid #34415e; border-radius: 13px; background: #111a2c; }
+.assistant-status-panel strong { display: block; font-size: 13px; }
+.assistant-status-panel p { margin: 7px 0 0; color: #aab8d0; font-size: 12px; line-height: 1.5; }
