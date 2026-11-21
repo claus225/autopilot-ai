@@ -47,7 +47,8 @@ Aucune action externe sans confirmation explicite. Pas de collecte de mots de pa
 - [ ] Notifications réelles (push/e-mail) et planification en arrière-plan
 - [x] Connecteur de chat IA local (Ollama, modèle à installer sur le PC)
 - [x] Arrêt d’urgence persistant dans SQLite et journal de sécurité sans contenu de messages
-- [ ] Authentification sécurisée avant tout déploiement public
+- [ ] Protection globale des routes API et interface de connexion (routes de session propriétaire ajoutées, mais API métier encore non protégée)
+- [x] Primitives Argon2id, stockage des sessions, routes setup/login/logout et tests associés
 - [ ] Base de données persistante adaptée à l'hébergement
 - [ ] Déploiement Render
 - [ ] Connexion Telegram complète : groupes/canaux autorisés, publications après confirmation, liens d’invitation et historique (seul le contrôle de connexion en lecture seule existe pour l’instant)
