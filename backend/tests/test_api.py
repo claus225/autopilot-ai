@@ -343,3 +343,57 @@ def test_api_rejects_oversized_announced_request_body():
     assert response.status_code == 413
     assert response.headers["x-content-type-options"] == "nosniff"
     assert response.headers["x-frame-options"] == "DENY"
+
+
+
+def test_telegram_status_is_not_configured_without_token(monkeypatch):
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    response = client.get("/api/telegram/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["configured"] is False
+    assert body["connected"] is False
+    assert body["sending_enabled"] is False
+    assert "token" not in str(body).lower() or "TELEGRAM_BOT_TOKEN" in str(body)
+
+
+def test_telegram_status_reports_bot_without_exposing_token(monkeypatch):
+    import json
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps({"ok": True, "result": {
+                "id": 12345,
+                "username": "example_helper_bot",
+                "first_name": "Example",
+                "can_join_groups": True,
+                "can_read_all_group_messages": False,
+            }}).encode("utf-8")
+
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-test-token")
+    monkeypatch.setattr("app.telegram.urlopen", lambda *args, **kwargs: FakeResponse())
+    response = client.get("/api/telegram/status")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["connected"] is True
+    assert body["bot"]["username"] == "example_helper_bot"
+    assert body["sending_enabled"] is False
+    assert "fake-test-token" not in response.text
+
+
+def test_telegram_status_is_suspended_by_emergency_stop(tmp_path, monkeypatch):
+    monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "telegram-stop.db"))
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-test-token")
+    client.post("/api/security/emergency-stop", json={"enabled": True})
+    response = client.get("/api/telegram/status")
+    assert response.status_code == 200
+    assert response.json()["mode"] == "emergency_stop"
+    assert response.json()["connected"] is False
+    assert response.json()["sending_enabled"] is False
+    client.post("/api/security/emergency-stop", json={"enabled": False})
