@@ -26,6 +26,7 @@ Consulte [GETTING_STARTED.md](GETTING_STARTED.md) pour installer Ollama, téléc
 - `backend/` : API FastAPI, stockage SQLite et tests.
 - `docs/architecture.md` : flux et étapes de conception.
 - `docs/RENDER_DEPLOYMENT.md` : prérequis de sécurité et de stockage avant Render.
+- `docs/SECURITY_AUDIT_PLAN.md` : périmètre et contrôles de l'audit de sécurité autorisé après publication.
 - `SECURITY.md` : règles de sécurité obligatoires.
 
 ## Sécurité
