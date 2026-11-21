@@ -9,7 +9,10 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, field_validator
 
-from .database import create_task, list_tasks, update_task_status
+from .database import (
+    create_task, list_tasks, update_task_status, get_emergency_stop,
+    set_emergency_stop as persist_emergency_stop, list_security_events,
+)
 
 app = FastAPI(
     title="AutoPilot AI API",
@@ -29,10 +32,6 @@ app.add_middleware(
 
 class EmergencyStopUpdate(BaseModel):
     enabled: bool
-
-
-# Process-level switch; defaults to off after an API restart.
-_emergency_stop_enabled = False
 
 
 class TaskDraft(BaseModel):
@@ -207,14 +206,14 @@ def generate_local_reply(messages: list[dict]) -> str:
 @app.get("/api/security/status")
 def security_status():
     return {
-        "emergency_stop_enabled": _emergency_stop_enabled,
+        "emergency_stop_enabled": get_emergency_stop(),
         "external_actions_enabled": False,
         "browser_automation_enabled": False,
         "local_agent_enabled": False,
-        "chat_available": not _emergency_stop_enabled,
+        "chat_available": not get_emergency_stop(),
         "message": (
             "Arrêt d’urgence activé : le chat IA est suspendu."
-            if _emergency_stop_enabled
+            if get_emergency_stop()
             else "Mode protégé : aucune action externe ni automatisation n’est activée."
         ),
     }
@@ -222,9 +221,18 @@ def security_status():
 
 @app.post("/api/security/emergency-stop")
 def set_emergency_stop(update: EmergencyStopUpdate):
-    global _emergency_stop_enabled
-    _emergency_stop_enabled = update.enabled
+    persist_emergency_stop(update.enabled)
     return security_status()
+
+
+@app.get("/api/security/events")
+def get_security_events(limit: int = 20):
+    """Return metadata-only security events; message contents are never logged."""
+    if limit < 1 or limit > 50:
+        raise HTTPException(status_code=422, detail="La limite doit être comprise entre 1 et 50.")
+    return {"items": list_security_events(limit)}
+
+
 
 
 @app.get("/api/assistant/status")
@@ -234,7 +242,7 @@ def assistant_status():
 
 @app.post("/api/assistant/chat")
 def assistant_chat(chat: ChatRequest):
-    if _emergency_stop_enabled:
+    if get_emergency_stop():
         raise HTTPException(status_code=423, detail="Arrêt d’urgence activé : le chat IA est suspendu.")
     status = get_ollama_status()
     if not status["connected"]:
