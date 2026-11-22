@@ -14,7 +14,13 @@ async function apiFetch(path, options = {}) {
     const csrf = readCookie("autopilot_csrf");
     if (csrf) headers.set("X-CSRF-Token", csrf);
   }
-  return fetch(`${API}${path}`, { ...options, headers, credentials: "include" });
+  const response = await fetch(`${API}${path}`, { ...options, headers, credentials: "include" });
+  // A server-side session can expire while the dashboard remains open.
+  // Notify the app so protected data is cleared and the owner sees login again.
+  if (response.status === 401 && !path.startsWith("/api/auth/")) {
+    window.dispatchEvent(new Event("autopilot:auth-expired"));
+  }
+  return response;
 }
 const SETTINGS_KEY = "autopilot-reminder-settings";
 const SENT_KEY = "autopilot-reminders-sent";
@@ -90,6 +96,18 @@ export default function App() {
       setLoadingTasks(false);
     }
   }
+
+  useEffect(() => {
+    const handleAuthExpired = () => {
+      setAuthMode("login");
+      setTasks([]);
+      setChatMessages([]);
+      setChatInput("");
+      setNotice("Ta session a expiré. Connecte-toi de nouveau.");
+    };
+    window.addEventListener("autopilot:auth-expired", handleAuthExpired);
+    return () => window.removeEventListener("autopilot:auth-expired", handleAuthExpired);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
