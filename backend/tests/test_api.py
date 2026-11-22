@@ -449,3 +449,56 @@ def test_cors_allows_configured_frontend_with_credentials_and_csrf_header():
     assert response.headers.get("access-control-allow-origin") == "http://localhost:5173"
     assert response.headers.get("access-control-allow-credentials") == "true"
     assert "x-csrf-token" in response.headers.get("access-control-allow-headers", "").lower()
+
+
+def test_ollama_chat_sends_local_non_streaming_request(monkeypatch):
+    from app.main import generate_local_reply
+    import json
+
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def read(self):
+            return json.dumps({"message": {"content": "Réponse locale"}}).encode("utf-8")
+
+    def fake_urlopen(request, timeout):
+        captured["url"] = request.full_url
+        captured["timeout"] = timeout
+        captured["body"] = json.loads(request.data.decode("utf-8"))
+        return FakeResponse()
+
+    monkeypatch.setattr("app.main.urlopen", fake_urlopen)
+    monkeypatch.setenv("OLLAMA_MODEL", "qwen3.5:0.8b")
+
+    reply = generate_local_reply([{"role": "user", "content": "Bonjour"}])
+
+    assert reply == "Réponse locale"
+    assert captured["url"] == "http://127.0.0.1:11434/api/chat"
+    assert captured["timeout"] == 120
+    assert captured["body"]["model"] == "qwen3.5:0.8b"
+    assert captured["body"]["stream"] is False
+    assert captured["body"]["messages"][-1] == {"role": "user", "content": "Bonjour"}
+    assert captured["body"]["messages"][0]["role"] == "system"
+
+
+def test_ollama_chat_sanitizes_connection_errors(monkeypatch):
+    from app.main import generate_local_reply
+    from fastapi import HTTPException
+
+    def offline(*args, **kwargs):
+        raise OSError("internal network detail")
+
+    monkeypatch.setattr("app.main.urlopen", offline)
+
+    try:
+        generate_local_reply([{"role": "user", "content": "Bonjour"}])
+        assert False, "Une erreur HTTP devait être levée."
+    except HTTPException as error:
+        assert error.status_code == 503
+        assert "internal network detail" not in error.detail
