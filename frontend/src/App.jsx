@@ -54,24 +54,38 @@ export default function App() {
   const [setupToken, setSetupToken] = useState("");
   const [authBusy, setAuthBusy] = useState(false);
 
+  async function readOptionalJson(path) {
+    try {
+      const response = await apiFetch(path);
+      return response.ok ? await response.json() : null;
+    } catch {
+      return null;
+    }
+  }
+
   async function loadTasks() {
     try {
       const response = await apiFetch(`/api/tasks`);
       if (!response.ok) throw new Error("API error");
       const data = await response.json();
-      setTasks(data.items);
-      const telegramResponse = await apiFetch(`/api/telegram/status`);
-      if (telegramResponse.ok) setTelegramStatus(await telegramResponse.json());
-      const securityResponse = await apiFetch(`/api/security/status`);
-      if (securityResponse.ok) setSecurityStatus(await securityResponse.json());
-      const statusResponse = await apiFetch(`/api/assistant/status`);
-      if (statusResponse.ok) setAssistantStatus(await statusResponse.json());
-      const suggestionResponse = await apiFetch(`/api/assistant/next-action`);
-      if (suggestionResponse.ok) setNextAction(await suggestionResponse.json());
-      const reminderResponse = await apiFetch(`/api/reminders?days=7`);
-      if (reminderResponse.ok) setReminders(await reminderResponse.json());
+      setTasks(Array.isArray(data.items) ? data.items : []);
+
+      // Optional panels load independently: one unavailable feature must not
+      // make the entire task history appear broken.
+      const [telegram, security, assistant, suggestion, reminder] = await Promise.all([
+        readOptionalJson("/api/telegram/status"),
+        readOptionalJson("/api/security/status"),
+        readOptionalJson("/api/assistant/status"),
+        readOptionalJson("/api/assistant/next-action"),
+        readOptionalJson("/api/reminders?days=7"),
+      ]);
+      if (telegram) setTelegramStatus(telegram);
+      if (security) setSecurityStatus(security);
+      if (assistant) setAssistantStatus(assistant);
+      if (suggestion) setNextAction(suggestion);
+      if (reminder) setReminders(reminder);
     } catch {
-      setNotice("Impossible de charger l'historique. Vérifie que l'API est démarrée.");
+      setNotice("Impossible de charger les tâches. Vérifie que l'API est démarrée.");
     } finally {
       setLoadingTasks(false);
     }
