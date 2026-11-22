@@ -160,9 +160,13 @@ def test_production_api_fails_closed_until_owner_setup(tmp_path, monkeypatch):
 
 def test_login_throttles_after_five_attempts(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
-    from app import auth_routes
+    from app import auth_routes, main
 
-    auth_routes._login_attempts.clear()
+    # Isolate this route-level throttle test from the app-wide API rate limiter.
+    with main._rate_lock:
+        main._rate_buckets.clear()
+    with auth_routes._login_lock:
+        auth_routes._login_attempts.clear()
     monkeypatch.setenv("AUTOPILOT_DB_PATH", str(tmp_path / "login-throttle.db"))
     monkeypatch.setenv("AUTOPILOT_SETUP_TOKEN", "setup-secret-" + "t" * 40)
     monkeypatch.setenv("AUTH_COOKIE_SECURE", "false")
@@ -192,7 +196,10 @@ def test_login_throttles_after_five_attempts(tmp_path, monkeypatch):
     )
     assert blocked.status_code == 429
     assert blocked.headers["Retry-After"] == "900"
-    auth_routes._login_attempts.clear()
+    with auth_routes._login_lock:
+        auth_routes._login_attempts.clear()
+    with main._rate_lock:
+        main._rate_buckets.clear()
 
 
 
